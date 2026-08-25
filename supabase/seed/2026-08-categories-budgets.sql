@@ -26,10 +26,10 @@ cats(id, name, kind, icon, color, daily_spend, owner_scope) as (
     ('cat_thuong', 'Thưởng', 'INCOME', 'Gift', '#16a34a', false, 'ALL'),
     ('cat_thu_nhap_khac', 'Thu nhập khác', 'INCOME', 'Coins', '#ca8a04', false, 'ALL')
 )
-insert into public.categories (household_id, id, name, kind, icon, color, daily_spend, owner_scope, is_active)
-select hh.id, c.id, c.name, c.kind, c.icon, c.color, c.daily_spend, c.owner_scope, true
+insert into public.categories (household_id, id, month, name, kind, icon, color, daily_spend, owner_scope, is_active)
+select hh.id, c.id, '2026-08', c.name, c.kind, c.icon, c.color, c.daily_spend, c.owner_scope, true
 from hh cross join cats c
-on conflict (household_id, id) do update set
+on conflict (household_id, month, id) do update set
   name = excluded.name,
   kind = excluded.kind,
   icon = excluded.icon,

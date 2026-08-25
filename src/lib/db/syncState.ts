@@ -76,21 +76,35 @@ export async function syncAppState(
     const prevItems = prev[key] as { id: string }[];
     const nextItems = next[key] as { id: string }[];
     const { upsertIds, deleteIds } = planCollectionSync(idsOf(prevItems), idsOf(nextItems));
+    const prevMap = byId(prevItems);
     const nextMap = byId(nextItems);
 
     if (deleteIds.length > 0) {
-      const { error } = await supabase
-        .from(table)
-        .delete()
-        .eq('household_id', householdId)
-        .in('id', deleteIds);
-      if (error) throw error;
+      if (key === 'categories') {
+        for (const id of deleteIds) {
+          const item = prevMap.get(id) as { id: string; month: string };
+          const { error } = await supabase
+            .from(table)
+            .delete()
+            .eq('household_id', householdId)
+            .eq('month', item.month)
+            .eq('id', id);
+          if (error) throw error;
+        }
+      } else {
+        const { error } = await supabase
+          .from(table)
+          .delete()
+          .eq('household_id', householdId)
+          .in('id', deleteIds);
+        if (error) throw error;
+      }
     }
 
     if (upsertIds.length > 0) {
       const rows = upsertIds.map((id) => TO_ROW[key](householdId, nextMap.get(id)!));
       const { error } = await supabase.from(table).upsert(rows, {
-        onConflict: 'household_id,id',
+        onConflict: key === 'categories' ? 'household_id,month,id' : 'household_id,id',
       });
       if (error) throw error;
     }
