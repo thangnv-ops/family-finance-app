@@ -3,15 +3,16 @@
  * Primary Controller & Main Application Layout
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   AppState,
-  loadAppState,
-  saveAppState,
   exportAppStateAsJSON,
   importAppStateFromJSON,
-  getInitialSeedState,
 } from './lib/storage';
+import { createEmptyAppState } from './lib/emptyState';
+import { loadAppStateFromDb } from './lib/db/loadState';
+import { syncAppState } from './lib/db/syncState';
+import { useAuthSession } from './hooks/useAuthSession';
 import {
   calculateBalances,
   calculateMonthlyStats,
@@ -42,22 +43,93 @@ import { PlanHub } from './components/plan/PlanHub';
 import { InsightsView } from './components/insights/InsightsView';
 import { MoreHub } from './components/more/MoreHub';
 import { NotificationDrawer } from './components/notifications/NotificationDrawer';
+import { LoginScreen } from './components/auth/LoginScreen';
+import { AccessDeniedScreen } from './components/auth/AccessDeniedScreen';
+import { AppLoadingScreen } from './components/auth/AppLoadingScreen';
 
 export default function App() {
-  const [appState, setAppState] = useState<AppState>(() => loadAppState());
+  const auth = useAuthSession();
+
+  if (auth.status === 'loading') {
+    return <AppLoadingScreen />;
+  }
+  if (auth.status === 'signed_out') {
+    return <LoginScreen onGoogle={auth.signInWithGoogle} error={auth.error} />;
+  }
+  if (auth.status === 'forbidden') {
+    return <AccessDeniedScreen onSignOut={auth.signOut} />;
+  }
+  if (!auth.householdId) {
+    return <AppLoadingScreen error={auth.error} onRetry={auth.refresh} />;
+  }
+
+  return <AuthenticatedApp householdId={auth.householdId} />;
+}
+
+function AuthenticatedApp({
+  householdId,
+}: {
+  householdId: string;
+}) {
+  const [appState, setAppState] = useState<AppState | null>(null);
+  const [prevState, setPrevState] = useState<AppState | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>('home');
   const [isQuickAddOpen, setIsQuickAddOpen] = useState<boolean>(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
 
-  // Sync to local storage on changes
-  useEffect(() => {
-    saveAppState(appState);
-  }, [appState]);
+  const reload = useCallback(async () => {
+    setLoadError(null);
+    try {
+      const state = await loadAppStateFromDb(householdId);
+      setAppState(state);
+      setPrevState(state);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : 'Không tải được dữ liệu');
+      setAppState(null);
+      setPrevState(null);
+    }
+  }, [householdId]);
 
-  // Derived real-time ledger metrics
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  useEffect(() => {
+    if (!appState || !prevState) return;
+    if (appState === prevState) return;
+    const handle = setTimeout(async () => {
+      const snapshot = appState;
+      const baseline = prevState;
+      try {
+        await syncAppState(householdId, baseline, snapshot);
+        setPrevState(snapshot);
+        setSaveError(null);
+      } catch (e) {
+        setSaveError(e instanceof Error ? e.message : 'Lưu thất bại');
+      }
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [appState, prevState, householdId]);
+
   const currentYM = getCurrentMonthStr();
   const balances = useMemo(() => {
+    if (!appState) {
+      return {
+        tk_thang: 0,
+        tk_van: 0,
+        tin_dung: 0,
+        totalCash: 0,
+        availableCash: 0,
+        reservedFunds: 0,
+        totalSavings: 0,
+        totalReceivables: 0,
+        totalPayables: 0,
+        netWorth: 0,
+      };
+    }
     return calculateBalances(
       appState.accounts,
       appState.transactions,
@@ -66,37 +138,47 @@ export default function App() {
       appState.funds
     );
   }, [
-    appState.accounts,
-    appState.transactions,
-    appState.savingsDeposits,
-    appState.loans,
-    appState.funds,
+    appState?.accounts,
+    appState?.transactions,
+    appState?.savingsDeposits,
+    appState?.loans,
+    appState?.funds,
   ]);
 
   const monthlyStats = useMemo(() => {
+    if (!appState) {
+      return calculateMonthlyStats(currentYM, [], [], []);
+    }
     return calculateMonthlyStats(
       currentYM,
       appState.transactions,
       appState.categories,
       appState.budgets
     );
-  }, [currentYM, appState.transactions, appState.categories, appState.budgets]);
+  }, [currentYM, appState?.transactions, appState?.categories, appState?.budgets]);
 
   const dailyAdvisor = useMemo(() => {
+    if (!appState) {
+      return calculateDailyAdvisor([], [], [], currentYM);
+    }
     return calculateDailyAdvisor(
       appState.transactions,
       appState.categories,
       appState.budgets,
       currentYM
     );
-  }, [appState.transactions, appState.categories, appState.budgets, currentYM]);
+  }, [appState?.transactions, appState?.categories, appState?.budgets, currentYM]);
 
-  // Filter transactions by current member if selected
   const visibleTransactions = useMemo(() => {
+    if (!appState) return [];
     const active = appState.transactions.filter((t) => !t.deletedAt);
     if (appState.currentMemberId === 'all') return active;
     return active.filter((t) => t.memberId === appState.currentMemberId);
-  }, [appState.transactions, appState.currentMemberId]);
+  }, [appState?.transactions, appState?.currentMemberId]);
+
+  if (!appState) {
+    return <AppLoadingScreen error={loadError} onRetry={reload} />;
+  }
 
   // Handler: Save new transaction
   const handleSaveTransaction = (
@@ -412,10 +494,11 @@ export default function App() {
   };
 
   const handleResetData = () => {
-    const initial = getInitialSeedState();
-    setAppState(initial);
-    saveAppState(initial);
-    alert('Đã khôi phục dữ liệu mẫu gốc của Thắng & Vân!');
+    const empty = createEmptyAppState(appState.householdName);
+    // Keep directory members from DB load so UI filters still work
+    empty.members = appState.members;
+    setAppState(empty);
+    alert('Đã xóa dữ liệu tài chính trên cloud (giữ thành viên hộ).');
   };
 
   const unreadAlertsCount =
@@ -424,6 +507,11 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col antialiased selection:bg-indigo-500 selection:text-white font-sans relative overflow-x-hidden">
+      {saveError ? (
+        <div className="relative z-50 bg-red-600 text-white text-sm px-4 py-2 text-center">
+          Không lưu được lên cloud: {saveError}
+        </div>
+      ) : null}
       {/* Background Soft Subtle Ambient Gradient Glows */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
         <div className="absolute -top-32 -left-32 w-96 h-96 bg-indigo-200/40 rounded-full filter blur-[100px]" />
@@ -438,7 +526,7 @@ export default function App() {
           householdName={appState.householdName}
           members={appState.members}
           currentMemberId={appState.currentMemberId}
-          onSelectMember={(id) => setAppState((p) => ({ ...p, currentMemberId: id }))}
+          onSelectMember={(id) => setAppState((p) => (p ? { ...p, currentMemberId: id } : p))}
           balances={balances}
           onOpenNotifications={() => setIsNotificationsOpen(true)}
           unreadAlertsCount={unreadAlertsCount}
