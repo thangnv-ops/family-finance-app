@@ -682,7 +682,6 @@ export function importAppStateFromJSON(jsonText: string): AppState {
   if (!parsed.transactions || !parsed.accounts) {
     throw new Error('Dữ liệu sao lưu không đúng định dạng hợp lệ.');
   }
-  const loaded = { ...getInitialSeedState(), ...parsed };
-  saveAppState(loaded);
-  return loaded;
+  // Caller persists via Supabase sync; do not write localStorage as source of truth.
+  return { ...getInitialSeedState(), ...parsed };
 }

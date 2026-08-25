@@ -1,0 +1,48 @@
+/** Collection keys on AppState that sync as row arrays with composite PK (household_id, id). */
+export const ARRAY_COLLECTIONS = [
+  'members',
+  'accounts',
+  'categories',
+  'transactions',
+  'suggestionRules',
+  'budgets',
+  'incomePlans',
+  'creditCardStatements',
+  'installmentPlans',
+  'savingsDeposits',
+  'counterparties',
+  'loans',
+  'funds',
+  'plannedExpenses',
+  'goals',
+  'events',
+  'eventItems',
+  'eventContributions',
+  'recurringTransactions',
+  'auditLogs',
+] as const;
+
+export type ArrayCollectionKey = (typeof ARRAY_COLLECTIONS)[number];
+
+export const COLLECTION_TABLES: Record<ArrayCollectionKey, string> = {
+  members: 'members',
+  accounts: 'accounts',
+  categories: 'categories',
+  transactions: 'transactions',
+  suggestionRules: 'suggestion_rules',
+  budgets: 'budgets',
+  incomePlans: 'income_plans',
+  creditCardStatements: 'credit_card_statements',
+  installmentPlans: 'installment_plans',
+  savingsDeposits: 'savings_deposits',
+  counterparties: 'counterparties',
+  loans: 'loans',
+  funds: 'funds',
+  plannedExpenses: 'planned_expenses',
+  goals: 'goals',
+  events: 'events',
+  eventItems: 'event_items',
+  eventContributions: 'event_contributions',
+  recurringTransactions: 'recurring_transactions',
+  auditLogs: 'audit_logs',
+};
