@@ -57,7 +57,13 @@ export default function App() {
     return <LoginScreen onGoogle={auth.signInWithGoogle} error={auth.error} />;
   }
   if (auth.status === 'forbidden') {
-    return <AccessDeniedScreen onSignOut={auth.signOut} />;
+    return (
+      <AccessDeniedScreen
+        onSignOut={auth.signOut}
+        email={auth.email}
+        error={auth.error}
+      />
+    );
   }
   if (!auth.householdId) {
     return <AppLoadingScreen error={auth.error} onRetry={auth.refresh} />;

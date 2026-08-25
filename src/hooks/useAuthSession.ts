@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { User } from '@supabase/supabase-js';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import {
   AccessStatus,
@@ -27,9 +27,46 @@ export function useAuthSession(): AuthSessionState {
   const [claimStatus, setClaimStatus] = useState<{ status: string } | null>(null);
   const [bootstrapping, setBootstrapping] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const runId = useRef(0);
+
+  const applySession = useCallback(async (session: Session | null) => {
+    const id = ++runId.current;
+    setError(null);
+    const nextUser = session?.user ?? null;
+    setUser(nextUser);
+
+    if (!nextUser) {
+      if (id !== runId.current) return;
+      setClaimStatus(null);
+      setHouseholdId(null);
+      setMemberKey(null);
+      setBootstrapping(false);
+      return;
+    }
+
+    try {
+      const claim = await claimMembership();
+      if (id !== runId.current) return;
+      setClaimStatus({ status: claim.status });
+      if (claim.status === 'ok') {
+        setHouseholdId(claim.householdId);
+        setMemberKey(claim.memberKey);
+      } else {
+        setHouseholdId(null);
+        setMemberKey(null);
+      }
+    } catch (e) {
+      if (id !== runId.current) return;
+      setError(e instanceof Error ? e.message : 'Không thể xác thực quyền truy cập');
+      setClaimStatus({ status: 'forbidden' });
+      setHouseholdId(null);
+      setMemberKey(null);
+    } finally {
+      if (id === runId.current) setBootstrapping(false);
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
-    setError(null);
     const { data, error: sessionError } = await supabase.auth.getSession();
     if (sessionError) {
       setError(sessionError.message);
@@ -40,44 +77,24 @@ export function useAuthSession(): AuthSessionState {
       setBootstrapping(false);
       return;
     }
-    const nextUser = data.session?.user ?? null;
-    setUser(nextUser);
-    if (!nextUser) {
-      setClaimStatus(null);
-      setHouseholdId(null);
-      setMemberKey(null);
-      setBootstrapping(false);
-      return;
-    }
-    try {
-      const claim = await claimMembership();
-      setClaimStatus({ status: claim.status });
-      if (claim.status === 'ok') {
-        setHouseholdId(claim.householdId);
-        setMemberKey(claim.memberKey);
-      } else {
-        setHouseholdId(null);
-        setMemberKey(null);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Không thể xác thực quyền truy cập');
-      setClaimStatus({ status: 'forbidden' });
-      setHouseholdId(null);
-      setMemberKey(null);
-    } finally {
-      setBootstrapping(false);
-    }
-  }, []);
+    await applySession(data.session);
+  }, [applySession]);
 
   useEffect(() => {
+    // Initial load outside the auth lock.
     void refresh();
-    const { data: sub } = supabase.auth.onAuthStateChange(() => {
-      void refresh();
+
+    // Never await supabase client calls directly inside this callback (deadlock risk).
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setTimeout(() => {
+        void applySession(session);
+      }, 0);
     });
+
     return () => {
       sub.subscription.unsubscribe();
     };
-  }, [refresh]);
+  }, [applySession, refresh]);
 
   const status: AccessStatus = bootstrapping
     ? 'loading'
