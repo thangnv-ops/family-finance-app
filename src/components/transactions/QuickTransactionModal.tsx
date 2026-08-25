@@ -12,22 +12,17 @@ import {
 } from '../../types/finance';
 import { evaluateDescription } from '../../lib/suggestions';
 import { getTodayDateStr, formatVND } from '../../lib/formatters';
-import { CategoryIcon } from '../common/CategoryIcon';
+import { STRUCTURAL_ACCOUNTS } from '../../lib/storage';
 import {
   X,
   Sparkles,
   ChevronDown,
   ChevronUp,
-  Calendar,
   Layers,
-  Users,
   CreditCard,
-  Wallet,
   ArrowRightLeft,
   ArrowDownLeft,
   ArrowUpRight,
-  Shield,
-  MapPin,
   Check,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -73,6 +68,11 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
   const [counterpartyId, setCounterpartyId] = useState<string>('');
   const [showMore, setShowMore] = useState<boolean>(false);
   const [matchedSuggestion, setMatchedSuggestion] = useState<string | null>(null);
+
+  const accountOptions = accounts.length > 0 ? accounts : STRUCTURAL_ACCOUNTS;
+  const effectiveSourceAccountId = accountOptions.some((a) => a.id === sourceAccountId)
+    ? sourceAccountId
+    : accountOptions[0]?.id ?? 'tk_thang';
 
   // Initialize or reset when modal opens
   useEffect(() => {
@@ -147,7 +147,7 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
           ? undefined
           : transactionType === 'CREDIT_PURCHASE'
           ? 'tin_dung'
-          : sourceAccountId,
+          : effectiveSourceAccountId,
       destinationAccountId:
         transactionType === 'INCOME'
           ? destinationAccountId || (memberId === 'van' ? 'tk_van' : 'tk_thang')
@@ -364,7 +364,7 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
                 {transactionType === 'TRANSFER' ? 'Từ tài khoản' : 'Tài khoản nguồn'}
               </label>
               <select
-                value={sourceAccountId}
+                value={effectiveSourceAccountId}
                 onChange={(e) => {
                   const val = e.target.value;
                   setSourceAccountId(val);
@@ -374,8 +374,8 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
                 disabled={transactionType === 'CREDIT_PURCHASE'}
                 className="w-full bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-xl px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-indigo-400/50"
               >
-                {accounts.map((acc) => (
-                  <option key={acc.id} value={acc.id}>
+                {accountOptions.map((acc) => (
+                  <option key={acc.id} value={acc.id} className="bg-white text-slate-900">
                     {acc.name} ({acc.type === 'CREDIT_LIABILITY' ? 'Dư nợ' : 'Tiền mặt'})
                   </option>
                 ))}
@@ -391,8 +391,13 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
                   onChange={(e) => setDestinationAccountId(e.target.value)}
                   className="w-full bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-xl px-3 py-2 text-xs font-semibold text-white focus:outline-none focus:border-indigo-400/50"
                 >
-                  <option value="tk_van">TK Vân</option>
-                  <option value="tk_thang">TK Thắng</option>
+                  {accountOptions
+                    .filter((acc) => acc.type !== 'CREDIT_LIABILITY')
+                    .map((acc) => (
+                      <option key={acc.id} value={acc.id} className="bg-white text-slate-900">
+                        {acc.name}
+                      </option>
+                    ))}
                 </select>
               </div>
             ) : (
@@ -411,7 +416,7 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
                         : c.kind === 'EXPENSE' || c.kind === 'BOTH'
                     )
                     .map((cat) => (
-                      <option key={cat.id} value={cat.id}>
+                      <option key={cat.id} value={cat.id} className="bg-white text-slate-900">
                         {cat.name} {cat.dailySpend ? '• (Hàng ngày)' : ''}
                       </option>
                     ))}
