@@ -1,0 +1,6 @@
+{
+  "name": "Family Finance App",
+  "description": "Quản lý tài chính gia đình Thắng & Vân: Ledger chuẩn mực, dự báo chi tiêu thông minh, thẻ tín dụng, tiết kiệm, vay nợ, quỹ dự phòng và sự kiện.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
