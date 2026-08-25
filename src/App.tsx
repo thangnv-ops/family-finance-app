@@ -575,6 +575,7 @@ function AuthenticatedApp({
 
         {activeTab === 'plan' && (
           <PlanHub
+            appState={appState}
             budgets={appState.budgets}
             incomePlans={appState.incomePlans}
             categories={appState.categories}
@@ -589,6 +590,12 @@ function AuthenticatedApp({
             members={appState.members}
             accounts={appState.accounts}
             totalCash={balances.totalCash}
+            onApplyPlanState={(partial) =>
+              setAppState((p) => ({
+                ...p,
+                ...partial,
+              }))
+            }
             onUpdateBudget={(b) =>
               setAppState((p) => ({
                 ...p,
