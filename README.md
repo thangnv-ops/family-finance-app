@@ -1,20 +1,31 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Family Finance — Thắng & Vân
 
-# Run and deploy your AI Studio app
+Vite + React app with Supabase Auth (Google) and Postgres. Deploy target: Vercel.
 
-This contains everything you need to run your app locally.
+## Local setup
 
-View your app in AI Studio: https://ai.studio/apps/84fcada2-64a2-409e-a58d-817d6cf6b222
+1. `npm install`
+2. Copy `.env.example` → `.env.local` and set:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_PUBLISHABLE_KEY`
+3. In Supabase Dashboard → Authentication:
+   - Enable **Google** provider (Google Cloud OAuth Client ID/Secret)
+   - Redirect URI: `https://ysxhprvlxflhmeaiujfp.supabase.co/auth/v1/callback`
+   - Site URL: `http://localhost:3000` (add production Vercel URL later)
+4. `npm run dev` → http://localhost:3000
 
-## Run Locally
+Whitelist emails are fixed in SQL migration (`allowed_emails`).
 
-**Prerequisites:**  Node.js
+## Scripts
 
+- `npm run dev` — local Vite on port 3000
+- `npm run build` — production build to `dist`
+- `npm test` — Vitest unit tests
+- `npm run lint` — `tsc --noEmit`
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Deploy (Vercel)
+
+1. Import GitHub repo `thangnv-ops/family-finance-app`, branch `feat/supabase-vercel` (or `main`)
+2. Framework: Vite · Build: `vite build` · Output: `dist`
+3. Env: same `VITE_SUPABASE_*` values
+4. Set Supabase Auth Site URL to the Vercel domain

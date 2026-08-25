@@ -1,6 +1,5 @@
-/** Collection keys on AppState that sync as row arrays with composite PK (household_id, id). */
-export const ARRAY_COLLECTIONS = [
-  'members',
+/** Collections that clients may upsert/delete (members are migration-owned, select-only). */
+export const SYNCABLE_COLLECTIONS = [
   'accounts',
   'categories',
   'transactions',
@@ -22,7 +21,11 @@ export const ARRAY_COLLECTIONS = [
   'auditLogs',
 ] as const;
 
+/** Collection keys on AppState that load as row arrays with composite PK (household_id, id). */
+export const ARRAY_COLLECTIONS = ['members', ...SYNCABLE_COLLECTIONS] as const;
+
 export type ArrayCollectionKey = (typeof ARRAY_COLLECTIONS)[number];
+export type SyncableCollectionKey = (typeof SYNCABLE_COLLECTIONS)[number];
 
 export const COLLECTION_TABLES: Record<ArrayCollectionKey, string> = {
   members: 'members',
