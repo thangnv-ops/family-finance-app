@@ -1,14 +1,10 @@
 import React from 'react';
-import { Member, FinancialAccount } from '../../types/finance';
 import { formatVND } from '../../lib/formatters';
 import { AccountBalances } from '../../lib/ledger';
-import { Users, Bell, Download, RefreshCw, Sparkles } from 'lucide-react';
+import { Bell, Download, Sparkles } from 'lucide-react';
 
 interface HeaderProps {
   householdName: string;
-  members: Member[];
-  currentMemberId: string;
-  onSelectMember: (id: string) => void;
   balances: AccountBalances;
   onOpenNotifications: () => void;
   unreadAlertsCount: number;
@@ -18,9 +14,6 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   householdName,
-  members,
-  currentMemberId,
-  onSelectMember,
   balances,
   onOpenNotifications,
   unreadAlertsCount,
@@ -45,40 +38,6 @@ export const Header: React.FC<HeaderProps> = ({
               Quản lý tài chính gia đình &middot; Ledger chuẩn mực
             </p>
           </div>
-        </div>
-
-        {/* Member Selector Pill */}
-        <div className="flex items-center bg-slate-100/90 p-1 rounded-2xl border border-slate-200 shadow-inner">
-          <button
-            onClick={() => onSelectMember('all')}
-            className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-              currentMemberId === 'all'
-                ? 'bg-indigo-600 text-white shadow-sm font-bold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-            }`}
-          >
-            <span className="flex items-center gap-1">
-              <Users className="w-3.5 h-3.5" />
-              <span>Gia đình</span>
-            </span>
-          </button>
-          {members.map((m) => (
-            <button
-              key={m.id}
-              onClick={() => onSelectMember(m.id)}
-              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                currentMemberId === m.id
-                  ? 'bg-white text-slate-900 shadow-sm border border-slate-200 font-bold'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-              }`}
-            >
-              <span
-                className="w-2 h-2 rounded-full ring-2 ring-slate-200"
-                style={{ backgroundColor: m.avatarColor }}
-              />
-              <span>{m.name}</span>
-            </button>
-          ))}
         </div>
 
         {/* Action Controls */}

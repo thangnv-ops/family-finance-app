@@ -530,9 +530,6 @@ function AuthenticatedApp({
       <div className="relative z-30">
         <Header
           householdName={appState.householdName}
-          members={appState.members}
-          currentMemberId={appState.currentMemberId}
-          onSelectMember={(id) => setAppState((p) => (p ? { ...p, currentMemberId: id } : p))}
           balances={balances}
           onOpenNotifications={() => setIsNotificationsOpen(true)}
           unreadAlertsCount={unreadAlertsCount}
