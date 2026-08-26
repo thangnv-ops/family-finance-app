@@ -70,6 +70,7 @@ interface PlanHubProps {
   onUpdateBudget: (budget: Budget) => void;
   onAddBudget?: (budget: Omit<Budget, 'id'>) => void;
   onDeleteBudget?: (id: string) => void;
+  onUpdateCategory?: (category: Category) => void;
   onUpdateIncomePlan?: (ip: IncomePlan) => void;
   onAddIncomePlan?: (ip: Omit<IncomePlan, 'id'>) => void;
   onDeleteIncomePlan?: (id: string) => void;
@@ -105,6 +106,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   onUpdateBudget,
   onAddBudget,
   onDeleteBudget,
+  onUpdateCategory,
   onUpdateIncomePlan,
   onAddIncomePlan,
   onDeleteIncomePlan,
@@ -278,6 +280,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [budgetCategoryId, setBudgetCategoryId] = useState('');
   const [budgetPlannedAmount, setBudgetPlannedAmount] = useState('');
+  const [budgetDailySpend, setBudgetDailySpend] = useState(false);
 
   // Modals for Income Plan (Lương & Thu nhập dự kiến)
   const [showAddIncomeModal, setShowAddIncomeModal] = useState(false);
@@ -355,6 +358,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
     const availableCat = expenseCats.find((c) => !existingBudgetCatIds.has(c.id)) || expenseCats[0];
     setBudgetCategoryId(availableCat ? availableCat.id : '');
     setBudgetPlannedAmount('');
+    setBudgetDailySpend(availableCat?.dailySpend ?? false);
     setShowAddBudgetModal(true);
   };
 
@@ -362,6 +366,12 @@ export const PlanHub: React.FC<PlanHubProps> = ({
     setEditingBudget(b);
     setBudgetCategoryId(b.categoryId);
     setBudgetPlannedAmount(b.plannedAmount.toString());
+    setBudgetDailySpend(categoryMap.get(b.categoryId)?.dailySpend ?? false);
+  };
+
+  const handleBudgetCategoryChange = (categoryId: string) => {
+    setBudgetCategoryId(categoryId);
+    setBudgetDailySpend(categoryMap.get(categoryId)?.dailySpend ?? false);
   };
 
   const handleSaveBudget = (e: React.FormEvent) => {
@@ -371,6 +381,11 @@ export const PlanHub: React.FC<PlanHubProps> = ({
     if (amount <= 0) {
       alert('Vui lòng nhập hạn mức lớn hơn 0');
       return;
+    }
+
+    const cat = categoryMap.get(budgetCategoryId);
+    if (cat && onUpdateCategory && cat.dailySpend !== budgetDailySpend) {
+      onUpdateCategory({ ...cat, dailySpend: budgetDailySpend });
     }
 
     if (editingBudget) {
@@ -820,8 +835,25 @@ export const PlanHub: React.FC<PlanHubProps> = ({
             </div>
 
             <div className="space-y-3">
-              {filteredBudgets
+              {[...filteredBudgets]
                 .filter((b) => b.budgetType === 'EXPENSE_LIMIT')
+                .sort((a, b) => {
+                  const dailyA = categoryMap.get(a.categoryId)?.dailySpend ? 1 : 0;
+                  const dailyB = categoryMap.get(b.categoryId)?.dailySpend ? 1 : 0;
+                  if (dailyA !== dailyB) return dailyB - dailyA;
+
+                  const actualA = actualCategorySpending.get(a.categoryId) || 0;
+                  const actualB = actualCategorySpending.get(b.categoryId) || 0;
+                  const remainPctA =
+                    a.plannedAmount > 0
+                      ? ((a.plannedAmount - actualA) / a.plannedAmount) * 100
+                      : 0;
+                  const remainPctB =
+                    b.plannedAmount > 0
+                      ? ((b.plannedAmount - actualB) / b.plannedAmount) * 100
+                      : 0;
+                  return remainPctB - remainPctA;
+                })
                 .map((b) => {
                   const cat = categoryMap.get(b.categoryId);
                   const actual = actualCategorySpending.get(b.categoryId) || 0;
@@ -1416,7 +1448,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
               <label className="block text-slate-700 mb-1 font-semibold">Danh mục chi tiêu</label>
               <select
                 value={budgetCategoryId}
-                onChange={(e) => setBudgetCategoryId(e.target.value)}
+                onChange={(e) => handleBudgetCategoryChange(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-900 font-medium focus:outline-none focus:border-indigo-500 focus:bg-white"
                 autoFocus
               >
@@ -1455,6 +1487,21 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                 Số tiền tối đa dự kiến chi cho danh mục này trong tháng.
               </p>
             </div>
+
+            <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:bg-indigo-50/40 hover:border-indigo-200 transition-colors">
+              <input
+                type="checkbox"
+                checked={budgetDailySpend}
+                onChange={(e) => setBudgetDailySpend(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+              />
+              <span>
+                <span className="block font-semibold text-slate-800">Tính vào chi tiêu hàng ngày</span>
+                <span className="block text-[11px] text-slate-500 mt-0.5 leading-snug">
+                  Bật thì hạn mức và chi thực tế của danh mục này đi vào Cố vấn chi tiêu hàng ngày.
+                </span>
+              </span>
+            </label>
 
             <div className="flex gap-2 pt-2">
               <button
@@ -1500,7 +1547,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
               <label className="block text-slate-700 mb-1 font-semibold">Danh mục</label>
               <select
                 value={budgetCategoryId}
-                onChange={(e) => setBudgetCategoryId(e.target.value)}
+                onChange={(e) => handleBudgetCategoryChange(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-900 font-medium focus:outline-none focus:border-indigo-500 focus:bg-white"
               >
                 {filteredCategories
@@ -1530,6 +1577,21 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                 autoFocus
               />
             </div>
+
+            <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer hover:bg-indigo-50/40 hover:border-indigo-200 transition-colors">
+              <input
+                type="checkbox"
+                checked={budgetDailySpend}
+                onChange={(e) => setBudgetDailySpend(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+              />
+              <span>
+                <span className="block font-semibold text-slate-800">Tính vào chi tiêu hàng ngày</span>
+                <span className="block text-[11px] text-slate-500 mt-0.5 leading-snug">
+                  Bật thì hạn mức và chi thực tế của danh mục này đi vào Cố vấn chi tiêu hàng ngày.
+                </span>
+              </span>
+            </label>
 
             <div className="flex gap-2 pt-2">
               <button
