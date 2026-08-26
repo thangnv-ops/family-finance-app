@@ -33,17 +33,29 @@ export async function signOut(): Promise<void> {
 export async function claimMembership(): Promise<ClaimResult> {
   const { data, error } = await supabase.rpc('claim_household_membership');
   if (error) throw error;
-  const payload = data as {
-    status: string;
-    household_id?: string;
-    member_key?: string;
-  };
-  if (payload.status !== 'ok' || !payload.household_id || !payload.member_key) {
+  const payload =
+    typeof data === 'string'
+      ? (JSON.parse(data) as {
+          status?: string;
+          household_id?: string;
+          member_key?: string;
+        })
+      : (data as {
+          status?: string;
+          household_id?: string;
+          member_key?: string;
+        } | null);
+  if (
+    !payload ||
+    payload.status !== 'ok' ||
+    !payload.household_id ||
+    !payload.member_key
+  ) {
     return { status: 'forbidden' };
   }
   return {
     status: 'ok',
-    householdId: payload.household_id,
-    memberKey: payload.member_key,
+    householdId: String(payload.household_id),
+    memberKey: String(payload.member_key),
   };
 }

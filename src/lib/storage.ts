@@ -91,6 +91,12 @@ export const INITIAL_ACCOUNTS: FinancialAccount[] = [
   },
 ];
 
+/** Cloud bootstrap: same 3 accounts, opening balance 0 (no demo money). */
+export const STRUCTURAL_ACCOUNTS: FinancialAccount[] = INITIAL_ACCOUNTS.map((a) => ({
+  ...a,
+  openingBalance: 0,
+}));
+
 export const INITIAL_CATEGORIES: Category[] = [
   { id: 'cat_tieu_vat_thang', month: '2026-08', name: 'Tiêu vặt Thắng', kind: 'EXPENSE', icon: 'User', color: '#3b82f6', dailySpend: true, ownerScope: 'THANG', isActive: true },
   { id: 'cat_tieu_vat_van', month: '2026-08', name: 'Tiêu vặt Vân', kind: 'EXPENSE', icon: 'Heart', color: '#ec4899', dailySpend: true, ownerScope: 'VAN', isActive: true },

@@ -57,7 +57,13 @@ export default function App() {
     return <LoginScreen onGoogle={auth.signInWithGoogle} error={auth.error} />;
   }
   if (auth.status === 'forbidden') {
-    return <AccessDeniedScreen onSignOut={auth.signOut} />;
+    return (
+      <AccessDeniedScreen
+        onSignOut={auth.signOut}
+        email={auth.email}
+        error={auth.error}
+      />
+    );
   }
   if (!auth.householdId) {
     return <AppLoadingScreen error={auth.error} onRetry={auth.refresh} />;
@@ -524,9 +530,6 @@ function AuthenticatedApp({
       <div className="relative z-30">
         <Header
           householdName={appState.householdName}
-          members={appState.members}
-          currentMemberId={appState.currentMemberId}
-          onSelectMember={(id) => setAppState((p) => (p ? { ...p, currentMemberId: id } : p))}
           balances={balances}
           onOpenNotifications={() => setIsNotificationsOpen(true)}
           unreadAlertsCount={unreadAlertsCount}

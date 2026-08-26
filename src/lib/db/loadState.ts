@@ -1,8 +1,9 @@
 import { supabase } from '../supabase';
 import { createEmptyAppState } from '../emptyState';
-import type { AppState } from '../storage';
+import { STRUCTURAL_ACCOUNTS, type AppState } from '../storage';
 import { ARRAY_COLLECTIONS, COLLECTION_TABLES, type ArrayCollectionKey } from './types';
 import {
+  accountToRow,
   rowToAccount,
   rowToAuditLog,
   rowToBudget,
@@ -25,6 +26,19 @@ import {
   rowToSuggestionRule,
   rowToTransaction,
 } from './mappers';
+
+async function ensureStructuralAccounts(
+  householdId: string,
+  state: AppState
+): Promise<AppState> {
+  if (state.accounts.length > 0) return state;
+
+  const rows = STRUCTURAL_ACCOUNTS.map((a) => accountToRow(householdId, a));
+  const { error } = await supabase.from('accounts').upsert(rows);
+  if (error) throw error;
+
+  return { ...state, accounts: STRUCTURAL_ACCOUNTS };
+}
 
 type RowMapper = (row: Record<string, unknown>) => unknown;
 
@@ -87,5 +101,5 @@ export async function loadAppStateFromDb(householdId: string): Promise<AppState>
     (state as any)[key] = rows.map((row) => FROM_ROW[key](row));
   });
 
-  return state;
+  return ensureStructuralAccounts(householdId, state);
 }
