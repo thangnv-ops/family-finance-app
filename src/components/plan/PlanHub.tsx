@@ -17,6 +17,7 @@ import {
 import { formatVND, formatDateVN, formatMonthVN, getCurrentMonthStr, shiftMonth } from '../../lib/formatters';
 import { AppState } from '../../lib/storage';
 import { copyPlanMonth, ensurePlanMonth, filterBudgets, filterCategories, filterIncomePlans, monthHasPlanData } from '../../lib/planMonth';
+import { filterCategoriesByQuery, resolveBudgetCategoryForAdd } from '../../lib/categories';
 import { CategoryIcon } from '../common/CategoryIcon';
 import { PlanMonthBar } from './PlanMonthBar';
 import {
@@ -69,6 +70,7 @@ interface PlanHubProps {
   totalCash: number;
   onUpdateBudget: (budget: Budget) => void;
   onAddBudget?: (budget: Omit<Budget, 'id'>) => void;
+  onAddCategory?: (category: Category | Omit<Category, 'id'>) => string;
   onDeleteBudget?: (id: string) => void;
   onUpdateIncomePlan?: (ip: IncomePlan) => void;
   onAddIncomePlan?: (ip: Omit<IncomePlan, 'id'>) => void;
@@ -104,6 +106,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   totalCash,
   onUpdateBudget,
   onAddBudget,
+  onAddCategory,
   onDeleteBudget,
   onUpdateIncomePlan,
   onAddIncomePlan,
@@ -277,6 +280,8 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   const [showAddBudgetModal, setShowAddBudgetModal] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [budgetCategoryId, setBudgetCategoryId] = useState('');
+  const [budgetCategoryName, setBudgetCategoryName] = useState('');
+  const [categorySuggestOpen, setCategorySuggestOpen] = useState(false);
   const [budgetPlannedAmount, setBudgetPlannedAmount] = useState('');
 
   // Modals for Income Plan (Lương & Thu nhập dự kiến)
@@ -348,13 +353,9 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   };
 
   const handleOpenAddBudget = () => {
-    const expenseCats = filteredCategories.filter((c) => c.kind === 'EXPENSE' || c.kind === 'BOTH');
-    const existingBudgetCatIds = new Set(
-      filteredBudgets.filter((b) => b.budgetType === 'EXPENSE_LIMIT').map((b) => b.categoryId)
-    );
-    const availableCat = expenseCats.find((c) => !existingBudgetCatIds.has(c.id)) || expenseCats[0];
-    setBudgetCategoryId(availableCat ? availableCat.id : '');
+    setBudgetCategoryName('');
     setBudgetPlannedAmount('');
+    setCategorySuggestOpen(false);
     setShowAddBudgetModal(true);
   };
 
@@ -366,7 +367,6 @@ export const PlanHub: React.FC<PlanHubProps> = ({
 
   const handleSaveBudget = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!budgetCategoryId) return;
     const amount = parseInt(budgetPlannedAmount.replace(/[^0-9]/g, ''), 10) || 0;
     if (amount <= 0) {
       alert('Vui lòng nhập hạn mức lớn hơn 0');
@@ -374,23 +374,51 @@ export const PlanHub: React.FC<PlanHubProps> = ({
     }
 
     if (editingBudget) {
+      if (!budgetCategoryId) return;
       onUpdateBudget({
         ...editingBudget,
         categoryId: budgetCategoryId,
         plannedAmount: amount,
       });
       setEditingBudget(null);
-    } else {
-      if (onAddBudget) {
-        onAddBudget({
-          month: currentYM,
-          categoryId: budgetCategoryId,
-          budgetType: 'EXPENSE_LIMIT',
-          plannedAmount: amount,
-        });
-      }
-      setShowAddBudgetModal(false);
+      return;
     }
+
+    const resolved = resolveBudgetCategoryForAdd({
+      name: budgetCategoryName,
+      categories: filteredCategories,
+      budgets: filteredBudgets,
+      month: currentYM,
+    });
+
+    if (resolved.ok === false) {
+      if (resolved.error === 'EMPTY_NAME') {
+        alert('Vui lòng nhập tên danh mục');
+      } else {
+        alert(
+          'Danh mục này đã có hạn mức trong tháng. Vui lòng dùng Sửa hạn mức để thay đổi.'
+        );
+      }
+      return;
+    }
+
+    let categoryId = resolved.categoryId;
+    if (resolved.createCategory && onAddCategory) {
+      categoryId = onAddCategory({ ...resolved.createCategory, id: resolved.categoryId });
+    } else if (resolved.createCategory && !onAddCategory) {
+      alert('Không thể tạo danh mục mới');
+      return;
+    }
+
+    if (onAddBudget) {
+      onAddBudget({
+        month: currentYM,
+        categoryId,
+        budgetType: 'EXPENSE_LIMIT',
+        plannedAmount: amount,
+      });
+    }
+    setShowAddBudgetModal(false);
   };
 
   const handleDeleteBudget = (id: string) => {
@@ -549,7 +577,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                   </div>
                   <div>
                     <h3 className="text-base font-extrabold flex items-center gap-2 text-slate-900">
-                      <span>Cân đối Kế hoạch Tháng {formatMonthVN(currentYM)}</span>
+                      <span>Cân đối Kế hoạch {formatMonthVN(currentYM)}</span>
                       <span
                         className={`text-xs px-2.5 py-0.5 rounded-full font-bold inline-flex items-center gap-1 ${
                           isPlannedSurplus
@@ -805,7 +833,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                   <span>Hạn mức ngân sách từng danh mục chi tiêu</span>
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Theo dõi Dự kiến / Thực tế / Còn lại và tỷ lệ sử dụng ngân sách tháng {formatMonthVN(currentYM)}
+                  Theo dõi Dự kiến / Thực tế / Còn lại và tỷ lệ sử dụng ngân sách {formatMonthVN(currentYM)}
                 </p>
               </div>
 
@@ -1340,7 +1368,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
 
             <div>
               <label className="block text-slate-700 font-semibold mb-1">
-                Số tiền dự kiến tháng {formatMonthVN(currentYM)} (VND)
+                Số tiền dự kiến {formatMonthVN(currentYM)} (VND)
               </label>
               <input
                 type="text"
@@ -1412,33 +1440,55 @@ export const PlanHub: React.FC<PlanHubProps> = ({
               </button>
             </div>
 
-            <div>
+            <div className="relative">
               <label className="block text-slate-700 mb-1 font-semibold">Danh mục chi tiêu</label>
-              <select
-                value={budgetCategoryId}
-                onChange={(e) => setBudgetCategoryId(e.target.value)}
+              <input
+                type="text"
+                value={budgetCategoryName}
+                onChange={(e) => {
+                  setBudgetCategoryName(e.target.value);
+                  setCategorySuggestOpen(true);
+                }}
+                onFocus={() => setCategorySuggestOpen(true)}
+                onBlur={() => {
+                  // defer so suggestion click registers
+                  window.setTimeout(() => setCategorySuggestOpen(false), 150);
+                }}
+                placeholder="Gõ tên hoặc chọn danh mục"
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-900 font-medium focus:outline-none focus:border-indigo-500 focus:bg-white"
                 autoFocus
-              >
-                <option value="">-- Chọn danh mục --</option>
-                {filteredCategories
-                  .filter((c) => c.kind === 'EXPENSE' || c.kind === 'BOTH')
-                  .map((cat) => {
-                    const hasBudget = filteredBudgets.some(
-                      (b) => b.categoryId === cat.id && b.budgetType === 'EXPENSE_LIMIT'
-                    );
-                    return (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name} {hasBudget ? '(Đã có hạn mức - sẽ cập nhật)' : ''}
-                      </option>
-                    );
-                  })}
-              </select>
+                autoComplete="off"
+              />
+              {categorySuggestOpen && (
+                <ul className="absolute z-10 mt-1 max-h-40 w-full overflow-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+                  {filterCategoriesByQuery(filteredCategories, budgetCategoryName).map((cat) => (
+                    <li key={cat.id}>
+                      <button
+                        type="button"
+                        className="w-full px-3 py-2 text-left text-slate-800 hover:bg-indigo-50 cursor-pointer"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          setBudgetCategoryName(cat.name);
+                          setCategorySuggestOpen(false);
+                        }}
+                      >
+                        {cat.name}
+                      </button>
+                    </li>
+                  ))}
+                  {filterCategoriesByQuery(filteredCategories, budgetCategoryName).length === 0 && (
+                    <li className="px-3 py-2 text-slate-500">Không có gợi ý — sẽ tạo danh mục mới khi lưu</li>
+                  )}
+                </ul>
+              )}
+              <p className="text-[11px] text-slate-500 mt-1">
+                Gõ để tìm danh mục có sẵn. Tên mới sẽ tạo danh mục khi lưu. Nếu đã có hạn mức tháng này, hãy dùng Sửa hạn mức.
+              </p>
             </div>
 
             <div>
               <label className="block text-slate-700 mb-1 font-semibold">
-                Hạn mức ngân sách tháng {formatMonthVN(currentYM)} (VND)
+                Hạn mức ngân sách {formatMonthVN(currentYM)} (VND)
               </label>
               <input
                 type="text"

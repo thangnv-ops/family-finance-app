@@ -616,6 +616,14 @@ function AuthenticatedApp({
                 ],
               }))
             }
+            onAddCategory={(c) => {
+              const id = 'id' in c && c.id ? c.id : `cat_${Date.now()}`;
+              setAppState((p) => ({
+                ...p,
+                categories: [...p.categories, { ...c, id }],
+              }));
+              return id;
+            }}
             onDeleteBudget={(id) =>
               setAppState((p) => ({
                 ...p,

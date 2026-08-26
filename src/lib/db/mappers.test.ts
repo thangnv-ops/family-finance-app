@@ -27,10 +27,9 @@ describe('transaction mappers', () => {
 });
 
 describe('category mappers', () => {
-  it('round-trips a category with its month', () => {
+  it('round-trips a household-scoped category without month', () => {
     const category = {
       id: 'cat_food',
-      month: '2026-08',
       name: 'Food',
       kind: 'EXPENSE' as const,
       icon: 'Utensils',
@@ -40,7 +39,8 @@ describe('category mappers', () => {
       isActive: true,
     };
     const row = categoryToRow('11111111-1111-1111-1111-111111111111', category);
-    expect(row.month).toBe('2026-08');
-    expect(rowToCategory(row).month).toBe('2026-08');
+    expect(row).not.toHaveProperty('month');
+    expect(rowToCategory(row).id).toBe('cat_food');
+    expect(rowToCategory(row).name).toBe('Food');
   });
 });

@@ -2,8 +2,9 @@ import type { Budget, Category, IncomePlan } from '../types/finance';
 import type { AppState } from './storage';
 import { shiftMonth } from './formatters';
 
-export function filterCategories(state: AppState, month: string): Category[] {
-  return state.categories.filter((category) => category.month === month);
+/** Categories are household-scoped (not per-month). */
+export function filterCategories(state: AppState, _month?: string): Category[] {
+  return state.categories;
 }
 
 export function filterBudgets(state: AppState, month: string): Budget[] {
@@ -15,13 +16,10 @@ export function filterIncomePlans(state: AppState, month: string): IncomePlan[] 
 }
 
 export function monthHasPlanData(state: AppState, month: string): boolean {
-  return (
-    filterCategories(state, month).length > 0 ||
-    filterBudgets(state, month).length > 0 ||
-    filterIncomePlans(state, month).length > 0
-  );
+  return filterBudgets(state, month).length > 0 || filterIncomePlans(state, month).length > 0;
 }
 
+/** Copy budgets + income plans only; category directory is shared across months. */
 export function copyPlanMonth(
   state: AppState,
   fromMonth: string,
@@ -34,10 +32,6 @@ export function copyPlanMonth(
 
   return {
     ...state,
-    categories: [
-      ...state.categories.filter((category) => category.month !== toMonth),
-      ...filterCategories(state, fromMonth).map((category) => ({ ...category, month: toMonth })),
-    ],
     budgets: [
       ...state.budgets.filter((budget) => budget.month !== toMonth),
       ...filterBudgets(state, fromMonth).map((budget) => ({ ...budget, month: toMonth })),

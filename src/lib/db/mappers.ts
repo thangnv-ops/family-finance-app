@@ -101,7 +101,6 @@ export function categoryToRow(householdId: HouseholdId, c: Category) {
   return {
     household_id: householdId,
     id: c.id,
-    month: c.month,
     name: c.name,
     kind: c.kind,
     icon: c.icon,
@@ -115,7 +114,6 @@ export function categoryToRow(householdId: HouseholdId, c: Category) {
 export function rowToCategory(row: Record<string, unknown>): Category {
   return {
     id: String(row.id),
-    month: String(row.month),
     name: String(row.name),
     kind: row.kind as CategoryKind,
     icon: String(row.icon),
