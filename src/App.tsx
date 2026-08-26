@@ -622,6 +622,12 @@ function AuthenticatedApp({
                 budgets: p.budgets.filter((item) => item.id !== id),
               }))
             }
+            onUpdateCategory={(c) =>
+              setAppState((p) => ({
+                ...p,
+                categories: p.categories.map((item) => (item.id === c.id ? c : item)),
+              }))
+            }
             onUpdateIncomePlan={(ip) =>
               setAppState((p) => ({
                 ...p,
