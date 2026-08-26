@@ -69,7 +69,6 @@ export interface Transaction {
   counterpartyId?: string; // for Lend/Borrow
   eventId?: string;
   goalId?: string;
-  fundId?: string;
   savingsDepositId?: string;
   loanId?: string;
   reversalOfTransactionId?: string;
@@ -183,20 +182,6 @@ export interface Loan {
   status: 'ACTIVE' | 'PARTIALLY_PAID' | 'PAID' | 'WRITTEN_OFF';
   note?: string;
   createdAt: string;
-}
-
-export interface Fund {
-  id: string;
-  name: string;
-  targetAmount: number;
-  currentAmount: number;
-  dueDate?: string;
-  cycleMonths?: number;
-  plannedContributionPerMonth: number;
-  backingAccountId: string; // TK Thắng or TK Vân
-  icon: string;
-  color: string;
-  status: 'ACTIVE' | 'COMPLETED' | 'PAUSED';
 }
 
 export interface PlannedExpense {

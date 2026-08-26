@@ -7,7 +7,7 @@ import {
   TransactionType,
   SuggestionRule,
   EventBudget,
-  Fund,
+  Goal,
   Counterparty,
 } from '../../types/finance';
 import { evaluateDescription } from '../../lib/suggestions';
@@ -35,7 +35,7 @@ interface QuickTransactionModalProps {
   members: Member[];
   rules: SuggestionRule[];
   events: EventBudget[];
-  funds: Fund[];
+  goals: Goal[];
   counterparties: Counterparty[];
   currentMemberId: string;
   onSaveTransaction: (tx: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>) => void;
@@ -49,7 +49,7 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
   members,
   rules,
   events,
-  funds,
+  goals,
   counterparties,
   currentMemberId,
   onSaveTransaction,
@@ -64,7 +64,7 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
   const [transactionDate, setTransactionDate] = useState<string>(getTodayDateStr());
   const [note, setNote] = useState<string>('');
   const [eventId, setEventId] = useState<string>('');
-  const [fundId, setFundId] = useState<string>('');
+  const [goalId, setGoalId] = useState<string>('');
   const [counterpartyId, setCounterpartyId] = useState<string>('');
   const [showMore, setShowMore] = useState<boolean>(false);
   const [matchedSuggestion, setMatchedSuggestion] = useState<string | null>(null);
@@ -87,7 +87,7 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
       setTransactionDate(getTodayDateStr());
       setNote('');
       setEventId('');
-      setFundId('');
+      setGoalId('');
       setCounterpartyId('');
       setShowMore(false);
       setMatchedSuggestion(null);
@@ -156,7 +156,7 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
           : undefined,
       memberId,
       eventId: eventId || undefined,
-      fundId: fundId || undefined,
+      goalId: goalId || undefined,
       counterpartyId: counterpartyId || undefined,
     });
 
@@ -472,18 +472,18 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  {/* Fund Link */}
+                  {/* Wishlist Link */}
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1">Thuộc Quỹ dự phòng/gom tiền</label>
+                    <label className="block text-xs text-slate-400 mb-1">Thuộc Wishlist</label>
                     <select
-                      value={fundId}
-                      onChange={(e) => setFundId(e.target.value)}
+                      value={goalId}
+                      onChange={(e) => setGoalId(e.target.value)}
                       className="w-full bg-slate-900/90 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
                     >
                       <option value="">-- Không có --</option>
-                      {funds.map((f) => (
-                        <option key={f.id} value={f.id}>
-                          {f.name}
+                      {goals.map((goal) => (
+                        <option key={goal.id} value={goal.id}>
+                          {goal.title}
                         </option>
                       ))}
                     </select>

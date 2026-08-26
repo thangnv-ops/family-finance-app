@@ -4,7 +4,6 @@ import {
   CreditCardStatement,
   SavingsDeposit,
   Loan,
-  Fund,
   PlannedExpense,
   Budget,
 } from '../../types/finance';
@@ -29,7 +28,6 @@ interface NotificationDrawerProps {
   creditCardConfig: CreditCardConfig;
   savingsDeposits: SavingsDeposit[];
   loans: Loan[];
-  funds: Fund[];
   plannedExpenses: PlannedExpense[];
 }
 
@@ -40,7 +38,6 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
   creditCardConfig,
   savingsDeposits,
   loans,
-  funds,
   plannedExpenses,
 }) => {
   if (!isOpen) return null;

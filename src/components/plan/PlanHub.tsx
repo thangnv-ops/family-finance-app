@@ -4,7 +4,6 @@ import {
   IncomePlan,
   Category,
   Transaction,
-  Fund,
   PlannedExpense,
   Goal,
   EventBudget,
@@ -19,9 +18,9 @@ import { AppState } from '../../lib/storage';
 import { copyPlanMonth, ensurePlanMonth, filterBudgets, filterCategories, filterIncomePlans, monthHasPlanData } from '../../lib/planMonth';
 import { CategoryIcon } from '../common/CategoryIcon';
 import { PlanMonthBar } from './PlanMonthBar';
+import { depositIntoGoal } from '../../lib/goals';
 import {
   Target,
-  PiggyBank,
   Sparkles,
   Calendar,
   Layers,
@@ -31,7 +30,6 @@ import {
   PlusCircle,
   TrendingUp,
   TrendingDown,
-  Shield,
   Plane,
   Gift,
   Clock,
@@ -57,7 +55,6 @@ interface PlanHubProps {
   incomePlans: IncomePlan[];
   categories: Category[];
   transactions: Transaction[];
-  funds: Fund[];
   plannedExpenses: PlannedExpense[];
   goals: Goal[];
   events: EventBudget[];
@@ -66,7 +63,6 @@ interface PlanHubProps {
   recurringTransactions: RecurringTransaction[];
   members: Member[];
   accounts: FinancialAccount[];
-  totalCash: number;
   onUpdateBudget: (budget: Budget) => void;
   onAddBudget?: (budget: Omit<Budget, 'id'>) => void;
   onDeleteBudget?: (id: string) => void;
@@ -74,8 +70,6 @@ interface PlanHubProps {
   onUpdateIncomePlan?: (ip: IncomePlan) => void;
   onAddIncomePlan?: (ip: Omit<IncomePlan, 'id'>) => void;
   onDeleteIncomePlan?: (id: string) => void;
-  onAddFund: (fund: Omit<Fund, 'id'>) => void;
-  onUpdateFund: (fund: Fund) => void;
   onAddPlannedExpense: (pe: Omit<PlannedExpense, 'id'>) => void;
   onUpdatePlannedExpense: (pe: PlannedExpense) => void;
   onAddGoal: (goal: Omit<Goal, 'id'>) => void;
@@ -93,7 +87,6 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   incomePlans,
   categories,
   transactions,
-  funds,
   plannedExpenses,
   goals,
   events,
@@ -102,7 +95,6 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   recurringTransactions,
   members,
   accounts,
-  totalCash,
   onUpdateBudget,
   onAddBudget,
   onDeleteBudget,
@@ -110,8 +102,6 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   onUpdateIncomePlan,
   onAddIncomePlan,
   onDeleteIncomePlan,
-  onAddFund,
-  onUpdateFund,
   onAddPlannedExpense,
   onUpdatePlannedExpense,
   onAddGoal,
@@ -121,7 +111,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   onApplyPlanState,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<
-    'budget' | 'funds' | 'goals_planned' | 'events' | 'recurring'
+    'budget' | 'goals_planned' | 'events' | 'recurring'
   >('budget');
   const [selectedPlanMonth, setSelectedPlanMonth] = useState(getCurrentMonthStr());
   const autoCopiedMonths = useRef(new Set<string>());
@@ -236,14 +226,6 @@ export const PlanHub: React.FC<PlanHubProps> = ({
     [filteredBudgets]
   );
 
-  const totalFundMonthlyTarget = useMemo(
-    () =>
-      funds
-        .filter((f) => f.status === 'ACTIVE')
-        .reduce((sum, f) => sum + (f.plannedContributionPerMonth || 0), 0),
-    [funds]
-  );
-
   // Net Planned Balance: Planned Income - Planned Expense Budgets
   const plannedNetBalance = totalPlannedIncome - totalExpenseBudget;
   const isPlannedSurplus = plannedNetBalance >= 0;
@@ -253,22 +235,12 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   // Actual Net Cash Flow this month
   const actualNetBalance = actualIncome - totalActualExpense;
 
-  // Total funds reserved vs total cash integrity check
-  const totalReservedFunds = useMemo(
-    () => funds.filter((f) => f.status === 'ACTIVE').reduce((sum, f) => sum + f.currentAmount, 0),
-    [funds]
-  );
-  const isFundOverReserved = totalReservedFunds > totalCash;
-
   // Modals for adding items
-  const [showAddFundModal, setShowAddFundModal] = useState(false);
-  const [newFundName, setNewFundName] = useState('');
-  const [newFundTarget, setNewFundTarget] = useState('');
-  const [newFundContribution, setNewFundContribution] = useState('');
-
   const [showAddGoalModal, setShowAddGoalModal] = useState(false);
   const [newGoalTitle, setNewGoalTitle] = useState('');
   const [newGoalTarget, setNewGoalTarget] = useState('');
+  const [depositGoal, setDepositGoal] = useState<Goal | null>(null);
+  const [depositAmount, setDepositAmount] = useState('');
 
   const [showAddPlannedModal, setShowAddPlannedModal] = useState(false);
   const [newPlannedTitle, setNewPlannedTitle] = useState('');
@@ -417,25 +389,6 @@ export const PlanHub: React.FC<PlanHubProps> = ({
     }
   };
 
-  const handleCreateFund = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newFundName.trim()) return;
-    onAddFund({
-      name: newFundName.trim(),
-      targetAmount: parseInt(newFundTarget.replace(/[^0-9]/g, ''), 10) || 10_000_000,
-      currentAmount: 0,
-      plannedContributionPerMonth: parseInt(newFundContribution.replace(/[^0-9]/g, ''), 10) || 1_000_000,
-      backingAccountId: 'tk_thang',
-      icon: 'Shield',
-      color: '#10b981',
-      status: 'ACTIVE',
-    });
-    setNewFundName('');
-    setNewFundTarget('');
-    setNewFundContribution('');
-    setShowAddFundModal(false);
-  };
-
   const handleCreateGoal = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGoalTitle.trim()) return;
@@ -450,6 +403,16 @@ export const PlanHub: React.FC<PlanHubProps> = ({
     setNewGoalTitle('');
     setNewGoalTarget('');
     setShowAddGoalModal(false);
+  };
+
+  const handleDepositGoal = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!depositGoal) return;
+    const amount = parseInt(depositAmount.replace(/[^0-9]/g, ''), 10);
+    if (!amount || amount <= 0) return;
+    onUpdateGoal(depositIntoGoal(depositGoal, amount));
+    setDepositGoal(null);
+    setDepositAmount('');
   };
 
   const handleCreatePlanned = (e: React.FormEvent) => {
@@ -488,18 +451,6 @@ export const PlanHub: React.FC<PlanHubProps> = ({
         >
           <Target className="w-3.5 h-3.5" />
           <span>Ngân sách {formatMonthVN(currentYM)}</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab('funds')}
-          className={`px-3.5 py-2 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
-            activeSubTab === 'funds'
-              ? 'bg-emerald-600 text-white shadow-sm'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-          }`}
-        >
-          <Shield className="w-3.5 h-3.5" />
-          <span>Quỹ gom tiền ({funds.length})</span>
         </button>
 
         <button
@@ -689,8 +640,8 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                   {formatVND(actualNetBalance)}
                 </div>
                 <div className="text-[11px] text-slate-400 flex justify-between pt-1">
-                  <span>Tiền gom quỹ tháng:</span>
-                  <strong className="text-slate-700">+{formatVND(totalFundMonthlyTarget)}</strong>
+                  <span>Tiền dành cho Wishlist:</span>
+                  <strong className="text-slate-700">{formatVND(appState.goals.reduce((sum, goal) => sum + goal.savedAmount, 0))}</strong>
                 </div>
               </div>
             </div>
@@ -703,7 +654,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                   <span className="text-slate-600">
                     Kế hoạch thu chi tháng này được cân đối an toàn. Thặng dư{' '}
                     <strong className="text-emerald-700">{formatVND(plannedNetBalance)}</strong> có thể
-                    được phân bổ vào các Quỹ gom tiền hoặc Sổ tiết kiệm.
+                    được phân bổ vào Wishlist hoặc Sổ tiết kiệm.
                   </span>
                 </>
               ) : (
@@ -939,124 +890,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
         </div>
       )}
 
-      {/* 2. Sub-Tab: FUNDS (Sinking Funds) */}
-      {activeSubTab === 'funds' && (
-        <div className="space-y-4">
-          {/* Over-reservation Alert if any */}
-          {isFundOverReserved && (
-            <div className="bg-rose-50 border border-rose-200 p-4 rounded-2xl flex items-center gap-3 text-xs text-rose-800 shadow-xs">
-              <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0" />
-              <div>
-                <strong>Cảnh báo quỹ:</strong> Tổng số tiền quỹ gom ({formatVND(totalReservedFunds)}) lớn hơn tổng tiền mặt hiện có ({formatVND(totalCash)}). Cần điều chỉnh để đảm bảo an toàn tài chính.
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-between items-center px-1">
-            <div>
-              <h3 className="text-base font-bold text-slate-900">Quỹ gom tiền định kỳ (Sinking Funds)</h3>
-              <p className="text-xs text-slate-500">
-                Gom tiền cho các khoản lớn (Tiền nhà, bảo hiểm, du lịch) mà không bị nhầm lẫn là chi tiêu
-              </p>
-            </div>
-            <button
-              onClick={() => setShowAddFundModal(true)}
-              className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Thêm quỹ mới</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {funds.map((fund) => {
-              const pct = Math.round((fund.currentAmount / (fund.targetAmount || 1)) * 100);
-              const isCompleted = fund.currentAmount >= fund.targetAmount;
-
-              return (
-                <div
-                  key={fund.id}
-                  className="bg-white border border-slate-200 p-4.5 rounded-3xl space-y-3.5 text-xs shadow-sm hover:border-slate-300 transition-all"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-xs border border-slate-200"
-                        style={{
-                          backgroundColor: `${fund.color}15`,
-                          color: fund.color,
-                        }}
-                      >
-                        <CategoryIcon iconName={fund.icon} className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-slate-900 text-sm">{fund.name}</h4>
-                        <span className="text-[11px] text-slate-500">
-                          Đóng góp: {formatVND(fund.plannedContributionPerMonth)}/tháng
-                        </span>
-                      </div>
-                    </div>
-
-                    <span
-                      className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${
-                        isCompleted
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                      }`}
-                    >
-                      {isCompleted ? 'Đã đủ quỹ' : `Tiến độ ${pct}%`}
-                    </span>
-                  </div>
-
-                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 flex justify-between items-center">
-                    <div>
-                      <span className="text-[10px] text-slate-500 uppercase font-semibold block">
-                        Đã tích lũy
-                      </span>
-                      <span className="text-base font-extrabold text-slate-900">
-                        {formatVND(fund.currentAmount)}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[10px] text-slate-500 uppercase font-semibold block">
-                        Mục tiêu
-                      </span>
-                      <span className="text-base font-extrabold text-emerald-600">
-                        {formatVND(fund.targetAmount)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-emerald-500 transition-all"
-                      style={{ width: `${Math.min(100, pct)}%` }}
-                    />
-                  </div>
-
-                  {/* Quick deposit button */}
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      onClick={() => {
-                        onUpdateFund({
-                          ...fund,
-                          currentAmount: fund.currentAmount + fund.plannedContributionPerMonth,
-                        });
-                      }}
-                      className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <span>+ Nạp {formatVND(fund.plannedContributionPerMonth, { compact: true })}</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* 3. Sub-Tab: GOALS & PLANNED EXPENSES */}
+      {/* 2. Sub-Tab: GOALS & PLANNED EXPENSES */}
       {activeSubTab === 'goals_planned' && (
         <div className="space-y-5">
           {/* Planned Large Expenses (>3M) */}
@@ -1157,6 +991,19 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                         style={{ width: `${Math.min(100, pct)}%` }}
                       />
                     </div>
+
+                    {g.status !== 'DONE' && g.status !== 'CANCELLED' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDepositGoal(g);
+                          setDepositAmount('');
+                        }}
+                        className="w-full py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 font-bold rounded-xl transition-colors cursor-pointer"
+                      >
+                        + Nạp
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -1621,58 +1468,39 @@ export const PlanHub: React.FC<PlanHubProps> = ({
         </div>
       )}
 
-      {/* Modal: Add Fund */}
-      {showAddFundModal && (
+      {/* Modal: Deposit into Goal */}
+      {depositGoal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-150">
           <form
-            onSubmit={handleCreateFund}
+            onSubmit={handleDepositGoal}
             className="w-full max-w-sm bg-white border border-slate-200 rounded-3xl p-5 space-y-3.5 text-xs shadow-xl"
           >
-            <h4 className="font-bold text-base text-slate-900">Tạo quỹ gom tiền mới</h4>
+            <h4 className="font-bold text-base text-slate-900">Nạp vào {depositGoal.title}</h4>
             <div>
-              <label className="block text-slate-700 font-semibold mb-1">Tên quỹ</label>
+              <label className="block text-slate-700 font-semibold mb-1">Số tiền cần nạp (VND)</label>
               <input
                 type="text"
-                placeholder="VD: Quỹ bảo dưỡng xe, Quỹ du lịch..."
-                value={newFundName}
-                onChange={(e) => setNewFundName(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
-                autoFocus
-              />
-            </div>
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">Mục tiêu (VND)</label>
-              <input
-                type="text"
-                placeholder="VD: 20000000"
-                value={newFundTarget}
-                onChange={(e) => setNewFundTarget(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
-              />
-            </div>
-            <div>
-              <label className="block text-slate-700 font-semibold mb-1">Đóng góp mỗi tháng (VND)</label>
-              <input
-                type="text"
+                inputMode="numeric"
                 placeholder="VD: 2000000"
-                value={newFundContribution}
-                onChange={(e) => setNewFundContribution(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
+                value={depositAmount}
+                onChange={(e) => setDepositAmount(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-purple-500 focus:bg-white"
+                autoFocus
               />
             </div>
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => setShowAddFundModal(false)}
+                onClick={() => setDepositGoal(null)}
                 className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-xl font-bold cursor-pointer"
               >
                 Hủy
               </button>
               <button
                 type="submit"
-                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-sm cursor-pointer"
+                className="flex-1 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold shadow-sm cursor-pointer"
               >
-                Tạo quỹ
+                Nạp tiền
               </button>
             </div>
           </form>

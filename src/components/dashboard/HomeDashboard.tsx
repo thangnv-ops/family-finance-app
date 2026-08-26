@@ -7,7 +7,6 @@ import {
   Budget,
   SavingsDeposit,
   Loan,
-  Fund,
   PlannedExpense,
   CreditCardConfig,
   CreditCardStatement,
@@ -56,7 +55,6 @@ interface HomeDashboardProps {
   creditCardStatements: CreditCardStatement[];
   savingsDeposits: SavingsDeposit[];
   loans: Loan[];
-  funds: Fund[];
   plannedExpenses: PlannedExpense[];
   recurringTransactions: RecurringTransaction[];
   onOpenQuickAdd: () => void;
@@ -77,7 +75,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   creditCardStatements,
   savingsDeposits,
   loans,
-  funds,
   plannedExpenses,
   recurringTransactions,
   onOpenQuickAdd,
@@ -243,7 +240,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               {formatVND(balances.availableCash)}
             </div>
             <p className="text-[11px] text-slate-500 mt-1">
-              Sau khi trừ {formatVND(balances.reservedFunds, { compact: true })} quỹ
+              Sau khi trừ {formatVND(balances.reservedGoals, { compact: true })} cho Wishlist
             </p>
           </div>
 
@@ -297,8 +294,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <span className="font-bold text-cyan-700 text-sm">{formatVND(balances.totalReceivables)}</span>
           </div>
           <div className="px-2 py-1">
-            <span className="text-slate-500 block mb-0.5">Quỹ gom tiền đã giữ</span>
-            <span className="font-bold text-amber-700 text-sm">{formatVND(balances.reservedFunds)}</span>
+            <span className="text-slate-500 block mb-0.5">Đã dành cho Wishlist</span>
+            <span className="font-bold text-amber-700 text-sm">{formatVND(balances.reservedGoals)}</span>
           </div>
           <div className="px-2 py-1 bg-indigo-50 rounded-xl border border-indigo-100">
             <span className="text-indigo-700 block mb-0.5 font-bold">TỔNG TÀI SẢN RÒNG</span>

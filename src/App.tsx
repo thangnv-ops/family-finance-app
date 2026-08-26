@@ -24,7 +24,6 @@ import {
   FinancialAccount,
   SavingsDeposit,
   Loan,
-  Fund,
   PlannedExpense,
   Goal,
   EventBudget,
@@ -129,7 +128,7 @@ function AuthenticatedApp({
         tin_dung: 0,
         totalCash: 0,
         availableCash: 0,
-        reservedFunds: 0,
+        reservedGoals: 0,
         totalSavings: 0,
         totalReceivables: 0,
         totalPayables: 0,
@@ -141,14 +140,14 @@ function AuthenticatedApp({
       appState.transactions,
       appState.savingsDeposits,
       appState.loans,
-      appState.funds
+      appState.goals
     );
   }, [
     appState?.accounts,
     appState?.transactions,
     appState?.savingsDeposits,
     appState?.loans,
-    appState?.funds,
+    appState?.goals,
   ]);
 
   const monthlyStats = useMemo(() => {
@@ -275,7 +274,7 @@ function AuthenticatedApp({
       destinationAccountId: tx.destinationAccountId,
       memberId: tx.memberId,
       eventId: tx.eventId,
-      fundId: tx.fundId,
+      goalId: tx.goalId,
       counterpartyId: tx.counterpartyId,
     });
   };
@@ -554,7 +553,6 @@ function AuthenticatedApp({
             creditCardStatements={appState.creditCardStatements}
             savingsDeposits={appState.savingsDeposits}
             loans={appState.loans}
-            funds={appState.funds}
             plannedExpenses={appState.plannedExpenses}
             recurringTransactions={appState.recurringTransactions}
             onOpenQuickAdd={() => setIsQuickAddOpen(true)}
@@ -583,7 +581,6 @@ function AuthenticatedApp({
             incomePlans={appState.incomePlans}
             categories={appState.categories}
             transactions={appState.transactions}
-            funds={appState.funds}
             plannedExpenses={appState.plannedExpenses}
             goals={appState.goals}
             events={appState.events}
@@ -592,7 +589,6 @@ function AuthenticatedApp({
             recurringTransactions={appState.recurringTransactions}
             members={appState.members}
             accounts={appState.accounts}
-            totalCash={balances.totalCash}
             onApplyPlanState={(partial) =>
               setAppState((p) => ({
                 ...p,
@@ -646,18 +642,6 @@ function AuthenticatedApp({
                 incomePlans: p.incomePlans.filter((item) => item.id !== id),
               }))
             }
-            onAddFund={(f) =>
-              setAppState((p) => ({
-                ...p,
-                funds: [...p.funds, { ...f, id: `fund_${Date.now()}` }],
-              }))
-            }
-            onUpdateFund={(f) =>
-              setAppState((p) => ({
-                ...p,
-                funds: p.funds.map((item) => (item.id === f.id ? f : item)),
-              }))
-            }
             onAddPlannedExpense={(pe) =>
               setAppState((p) => ({
                 ...p,
@@ -700,7 +684,6 @@ function AuthenticatedApp({
             accounts={appState.accounts}
             savingsDeposits={appState.savingsDeposits}
             loans={appState.loans}
-            funds={appState.funds}
             members={appState.members}
             balances={balances}
           />
@@ -757,7 +740,7 @@ function AuthenticatedApp({
         members={appState.members}
         rules={appState.suggestionRules}
         events={appState.events}
-        funds={appState.funds}
+        goals={appState.goals}
         counterparties={appState.counterparties}
         currentMemberId={appState.currentMemberId}
         onSaveTransaction={handleSaveTransaction}
@@ -771,7 +754,7 @@ function AuthenticatedApp({
         accounts={appState.accounts}
         members={appState.members}
         events={appState.events}
-        funds={appState.funds}
+        goals={appState.goals}
         counterparties={appState.counterparties}
         onUpdateTransaction={handleUpdateTransaction}
         onDeleteTransaction={handleDeleteTransaction}
@@ -786,7 +769,6 @@ function AuthenticatedApp({
         creditCardConfig={appState.creditCardConfig}
         savingsDeposits={appState.savingsDeposits}
         loans={appState.loans}
-        funds={appState.funds}
         plannedExpenses={appState.plannedExpenses}
       />
     </div>

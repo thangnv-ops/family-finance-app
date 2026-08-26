@@ -29,7 +29,6 @@ export function createEmptyAppState(householdName: string): AppState {
     savingsDeposits: [],
     counterparties: [],
     loans: [],
-    funds: [],
     plannedExpenses: [],
     goals: [],
     events: [],

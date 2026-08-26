@@ -16,7 +16,6 @@ import {
   SavingsDeposit,
   Counterparty,
   Loan,
-  Fund,
   PlannedExpense,
   Goal,
   EventBudget,
@@ -45,7 +44,6 @@ export interface AppState {
   savingsDeposits: SavingsDeposit[];
   counterparties: Counterparty[];
   loans: Loan[];
-  funds: Fund[];
   plannedExpenses: PlannedExpense[];
   goals: Goal[];
   events: EventBudget[];
@@ -429,46 +427,6 @@ export function getInitialSeedState(): AppState {
     },
   ];
 
-  const funds: Fund[] = [
-    {
-      id: 'fund_1',
-      name: 'Quỹ Dự phòng Khẩn cấp',
-      targetAmount: 50_000_000,
-      currentAmount: 35_000_000,
-      plannedContributionPerMonth: 3_000_000,
-      backingAccountId: 'tk_thang',
-      icon: 'Shield',
-      color: '#10b981',
-      status: 'ACTIVE',
-    },
-    {
-      id: 'fund_2',
-      name: 'Quỹ Du lịch Hè & Nghỉ lễ',
-      targetAmount: 20_000_000,
-      currentAmount: 14_500_000,
-      dueDate: '2026-10-01',
-      cycleMonths: 12,
-      plannedContributionPerMonth: 2_000_000,
-      backingAccountId: 'tk_van',
-      icon: 'Plane',
-      color: '#f59e0b',
-      status: 'ACTIVE',
-    },
-    {
-      id: 'fund_3',
-      name: 'Quỹ Bảo hiểm & Sức khỏe gia đình',
-      targetAmount: 24_000_000,
-      currentAmount: 16_000_000,
-      dueDate: '2026-11-15',
-      cycleMonths: 12,
-      plannedContributionPerMonth: 2_000_000,
-      backingAccountId: 'tk_thang',
-      icon: 'HeartPulse',
-      color: '#ec4899',
-      status: 'ACTIVE',
-    },
-  ];
-
   const plannedExpenses: PlannedExpense[] = [
     {
       id: 'pe_1',
@@ -635,7 +593,6 @@ export function getInitialSeedState(): AppState {
     savingsDeposits,
     counterparties,
     loans,
-    funds,
     plannedExpenses,
     goals,
     events,

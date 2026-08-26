@@ -12,7 +12,6 @@ import type {
   SavingsDeposit,
   Counterparty,
   Loan,
-  Fund,
   PlannedExpense,
   Goal,
   EventBudget,
@@ -142,7 +141,6 @@ export function transactionToRow(householdId: HouseholdId, t: Transaction) {
     counterparty_id: t.counterpartyId ?? null,
     event_id: t.eventId ?? null,
     goal_id: t.goalId ?? null,
-    fund_id: t.fundId ?? null,
     savings_deposit_id: t.savingsDepositId ?? null,
     loan_id: t.loanId ?? null,
     reversal_of_transaction_id: t.reversalOfTransactionId ?? null,
@@ -168,7 +166,6 @@ export function rowToTransaction(row: Record<string, unknown>): Transaction {
     counterpartyId: optStr(row.counterparty_id),
     eventId: optStr(row.event_id),
     goalId: optStr(row.goal_id),
-    fundId: optStr(row.fund_id),
     savingsDepositId: optStr(row.savings_deposit_id),
     loanId: optStr(row.loan_id),
     reversalOfTransactionId: optStr(row.reversal_of_transaction_id),
@@ -443,40 +440,6 @@ export function rowToLoan(row: Record<string, unknown>): Loan {
     status: row.status as Loan['status'],
     note: optStr(row.note),
     createdAt: isoStr(row.created_at),
-  };
-}
-
-// ---- funds ----
-export function fundToRow(householdId: HouseholdId, f: Fund) {
-  return {
-    household_id: householdId,
-    id: f.id,
-    name: f.name,
-    target_amount: f.targetAmount,
-    current_amount: f.currentAmount,
-    due_date: f.dueDate ?? null,
-    cycle_months: f.cycleMonths ?? null,
-    planned_contribution_per_month: f.plannedContributionPerMonth,
-    backing_account_id: f.backingAccountId,
-    icon: f.icon,
-    color: f.color,
-    status: f.status,
-  };
-}
-
-export function rowToFund(row: Record<string, unknown>): Fund {
-  return {
-    id: String(row.id),
-    name: String(row.name),
-    targetAmount: Number(row.target_amount ?? 0),
-    currentAmount: Number(row.current_amount ?? 0),
-    dueDate: row.due_date == null ? undefined : dateStr(row.due_date),
-    cycleMonths: optNum(row.cycle_months),
-    plannedContributionPerMonth: Number(row.planned_contribution_per_month ?? 0),
-    backingAccountId: String(row.backing_account_id),
-    icon: String(row.icon),
-    color: String(row.color),
-    status: row.status as Fund['status'],
   };
 }
 

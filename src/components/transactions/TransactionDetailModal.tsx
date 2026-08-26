@@ -5,7 +5,7 @@ import {
   Member,
   FinancialAccount,
   EventBudget,
-  Fund,
+  Goal,
   Counterparty,
 } from '../../types/finance';
 import { formatVND, formatDateVN } from '../../lib/formatters';
@@ -31,7 +31,7 @@ interface TransactionDetailModalProps {
   accounts: FinancialAccount[];
   members: Member[];
   events: EventBudget[];
-  funds: Fund[];
+  goals: Goal[];
   counterparties: Counterparty[];
   onUpdateTransaction: (tx: Transaction) => void;
   onDeleteTransaction: (id: string) => void;
@@ -45,7 +45,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
   accounts,
   members,
   events,
-  funds,
+  goals,
   counterparties,
   onUpdateTransaction,
   onDeleteTransaction,
@@ -67,7 +67,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
   const srcAccount = accounts.find((a) => a.id === transaction.sourceAccountId);
   const destAccount = accounts.find((a) => a.id === transaction.destinationAccountId);
   const event = events.find((e) => e.id === transaction.eventId);
-  const fund = funds.find((f) => f.id === transaction.fundId);
+  const goal = goals.find((item) => item.id === transaction.goalId);
   const counterparty = counterparties.find((c) => c.id === transaction.counterpartyId);
 
   const startEdit = () => {
@@ -233,10 +233,10 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
                 </div>
               )}
 
-              {fund && (
+              {goal && (
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-400">Quỹ gom tiền</span>
-                  <span className="font-semibold text-amber-300">{fund.name}</span>
+                  <span className="text-slate-400">Wishlist</span>
+                  <span className="font-semibold text-purple-300">{goal.title}</span>
                 </div>
               )}
 

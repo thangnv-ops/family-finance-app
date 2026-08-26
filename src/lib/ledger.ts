@@ -8,20 +8,21 @@ import {
   FinancialAccount,
   SavingsDeposit,
   Loan,
-  Fund,
+  Goal,
   Budget,
   Category,
   CreditCardConfig,
 } from '../types/finance';
 import { getCurrentMonthStr, getDaysInMonth } from './formatters';
+import { reservedGoalAmount } from './goals';
 
 export interface AccountBalances {
   tk_thang: number;
   tk_van: number;
   tin_dung: number; // Liability amount (positive number represents debt)
   totalCash: number; // tk_thang + tk_van
-  availableCash: number; // totalCash - reservedFunds
-  reservedFunds: number;
+  availableCash: number; // totalCash - reservedGoals
+  reservedGoals: number;
   totalSavings: number;
   totalReceivables: number; // Cho vay
   totalPayables: number; // Đi vay
@@ -67,7 +68,7 @@ export function calculateBalances(
   transactions: Transaction[],
   savings: SavingsDeposit[],
   loans: Loan[],
-  funds: Fund[]
+  goals: Goal[]
 ): AccountBalances {
   const activeTx = transactions.filter((t) => !t.deletedAt);
 
@@ -179,12 +180,9 @@ export function calculateBalances(
     .filter((l) => l.direction === 'PAYABLE' && (l.status === 'ACTIVE' || l.status === 'PARTIALLY_PAID'))
     .reduce((sum, l) => sum + l.outstandingPrincipal, 0);
 
-  // Active funds reserved
-  const reservedFunds = funds
-    .filter((f) => f.status === 'ACTIVE')
-    .reduce((sum, f) => sum + f.currentAmount, 0);
+  const reservedGoals = reservedGoalAmount(goals);
 
-  const availableCash = totalCash - reservedFunds;
+  const availableCash = totalCash - reservedGoals;
 
   // Net Worth formula (Section 34):
   // Net Worth = TK Thắng + TK Vân + Savings + Receivables - Tín dụng - Payables
@@ -196,7 +194,7 @@ export function calculateBalances(
     tin_dung: balTinDung,
     totalCash,
     availableCash,
-    reservedFunds,
+    reservedGoals,
     totalSavings,
     totalReceivables,
     totalPayables,

@@ -6,7 +6,6 @@ import {
   FinancialAccount,
   SavingsDeposit,
   Loan,
-  Fund,
   Member,
 } from '../../types/finance';
 import {
@@ -52,7 +51,6 @@ interface InsightsViewProps {
   accounts: FinancialAccount[];
   savingsDeposits: SavingsDeposit[];
   loans: Loan[];
-  funds: Fund[];
   members: Member[];
   balances: AccountBalances;
 }
@@ -64,7 +62,6 @@ export const InsightsView: React.FC<InsightsViewProps> = ({
   accounts,
   savingsDeposits,
   loans,
-  funds,
   members,
   balances,
 }) => {
