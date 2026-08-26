@@ -45,6 +45,7 @@ export type CategoryKind = 'EXPENSE' | 'INCOME' | 'BOTH';
 
 export interface Category {
   id: string;
+  month: string; // YYYY-MM
   name: string;
   kind: CategoryKind;
   icon: string;

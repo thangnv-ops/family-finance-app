@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Budget,
   IncomePlan,
@@ -14,8 +14,11 @@ import {
   Member,
   FinancialAccount,
 } from '../../types/finance';
-import { formatVND, formatDateVN, formatMonthVN, getCurrentMonthStr } from '../../lib/formatters';
+import { formatVND, formatDateVN, formatMonthVN, getCurrentMonthStr, shiftMonth } from '../../lib/formatters';
+import { AppState } from '../../lib/storage';
+import { copyPlanMonth, ensurePlanMonth, filterBudgets, filterCategories, filterIncomePlans, monthHasPlanData } from '../../lib/planMonth';
 import { CategoryIcon } from '../common/CategoryIcon';
+import { PlanMonthBar } from './PlanMonthBar';
 import {
   Target,
   PiggyBank,
@@ -49,6 +52,7 @@ import {
 import confetti from 'canvas-confetti';
 
 interface PlanHubProps {
+  appState: AppState;
   budgets: Budget[];
   incomePlans: IncomePlan[];
   categories: Category[];
@@ -77,9 +81,13 @@ interface PlanHubProps {
   onUpdateGoal: (goal: Goal) => void;
   onAddEvent: (ev: Omit<EventBudget, 'id'>) => void;
   onConfirmRecurring: (rec: RecurringTransaction) => void;
+  onApplyPlanState: (
+    partial: Pick<AppState, 'categories' | 'budgets' | 'incomePlans'>
+  ) => void;
 }
 
 export const PlanHub: React.FC<PlanHubProps> = ({
+  appState,
   budgets,
   incomePlans,
   categories,
@@ -108,20 +116,66 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   onUpdateGoal,
   onAddEvent,
   onConfirmRecurring,
+  onApplyPlanState,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<
     'budget' | 'funds' | 'goals_planned' | 'events' | 'recurring'
   >('budget');
+  const [selectedPlanMonth, setSelectedPlanMonth] = useState(getCurrentMonthStr());
+  const autoCopiedMonths = useRef(new Set<string>());
 
-  const currentYM = getCurrentMonthStr();
-  const categoryMap = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
+  const currentYM = selectedPlanMonth;
+  const filteredCategories = useMemo(
+    () => filterCategories(appState, selectedPlanMonth),
+    [appState, selectedPlanMonth]
+  );
+  const filteredBudgets = useMemo(
+    () => filterBudgets(appState, selectedPlanMonth),
+    [appState, selectedPlanMonth]
+  );
+  const filteredIncomePlans = useMemo(
+    () => filterIncomePlans(appState, selectedPlanMonth),
+    [appState, selectedPlanMonth]
+  );
+  const categoryMap = useMemo(() => new Map(filteredCategories.map((c) => [c.id, c])), [filteredCategories]);
   const memberMap = useMemo(() => new Map(members.map((m) => [m.id, m])), [members]);
+
+  useEffect(() => {
+    if (autoCopiedMonths.current.has(selectedPlanMonth)) return;
+    const result = ensurePlanMonth(appState, selectedPlanMonth);
+    autoCopiedMonths.current.add(selectedPlanMonth);
+    if (result.didAutoCopy) {
+      onApplyPlanState({
+        categories: result.state.categories,
+        budgets: result.state.budgets,
+        incomePlans: result.state.incomePlans,
+      });
+    }
+  }, [appState, onApplyPlanState, selectedPlanMonth]);
+
+  const handleCopyPrevious = () => {
+    if (monthHasPlanData(appState, selectedPlanMonth) &&
+        !window.confirm('Tháng này đã có dữ liệu — ghi đè?')) {
+      return;
+    }
+    const copied = copyPlanMonth(
+      appState,
+      shiftMonth(selectedPlanMonth, -1),
+      selectedPlanMonth,
+      { overwrite: true }
+    );
+    onApplyPlanState({
+      categories: copied.categories,
+      budgets: copied.budgets,
+      incomePlans: copied.incomePlans,
+    });
+  };
 
   // Actual category spending this month
   const actualCategorySpending = useMemo(() => {
     const map = new Map<string, number>();
     transactions
-      .filter((t) => !t.deletedAt && t.transactionDate.startsWith(currentYM))
+      .filter((t) => !t.deletedAt && t.transactionDate.startsWith(selectedPlanMonth))
       .forEach((t) => {
         if (
           t.categoryId &&
@@ -133,29 +187,29 @@ export const PlanHub: React.FC<PlanHubProps> = ({
         }
       });
     return map;
-  }, [transactions, currentYM]);
+  }, [transactions, selectedPlanMonth]);
 
   // Actual income this month total
   const actualIncome = useMemo(() => {
     let sum = 0;
     transactions
-      .filter((t) => !t.deletedAt && t.transactionDate.startsWith(currentYM) && t.transactionType === 'INCOME')
+      .filter((t) => !t.deletedAt && t.transactionDate.startsWith(selectedPlanMonth) && t.transactionType === 'INCOME')
       .forEach((t) => {
         sum += t.amount;
       });
     return sum;
-  }, [transactions, currentYM]);
+  }, [transactions, selectedPlanMonth]);
 
   // Actual income received per member
   const actualIncomeByMember = useMemo(() => {
     const map = new Map<string, number>();
     transactions
-      .filter((t) => !t.deletedAt && t.transactionDate.startsWith(currentYM) && t.transactionType === 'INCOME')
+      .filter((t) => !t.deletedAt && t.transactionDate.startsWith(selectedPlanMonth) && t.transactionType === 'INCOME')
       .forEach((t) => {
         map.set(t.memberId, (map.get(t.memberId) || 0) + t.amount);
       });
     return map;
-  }, [transactions, currentYM]);
+  }, [transactions, selectedPlanMonth]);
 
   // Total actual spending this month
   const totalActualExpense = useMemo(() => {
@@ -168,16 +222,16 @@ export const PlanHub: React.FC<PlanHubProps> = ({
 
   // Planned totals & Calculations
   const totalPlannedIncome = useMemo(
-    () => incomePlans.reduce((sum, ip) => sum + (ip.expectedAmount || 0), 0),
-    [incomePlans]
+    () => filteredIncomePlans.reduce((sum, ip) => sum + (ip.expectedAmount || 0), 0),
+    [filteredIncomePlans]
   );
 
   const totalExpenseBudget = useMemo(
     () =>
-      budgets
+      filteredBudgets
         .filter((b) => b.budgetType === 'EXPENSE_LIMIT')
         .reduce((sum, b) => sum + (b.plannedAmount || 0), 0),
-    [budgets]
+    [filteredBudgets]
   );
 
   const totalFundMonthlyTarget = useMemo(
@@ -294,9 +348,9 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   };
 
   const handleOpenAddBudget = () => {
-    const expenseCats = categories.filter((c) => c.kind === 'EXPENSE' || c.kind === 'BOTH');
+    const expenseCats = filteredCategories.filter((c) => c.kind === 'EXPENSE' || c.kind === 'BOTH');
     const existingBudgetCatIds = new Set(
-      budgets.filter((b) => b.budgetType === 'EXPENSE_LIMIT').map((b) => b.categoryId)
+      filteredBudgets.filter((b) => b.budgetType === 'EXPENSE_LIMIT').map((b) => b.categoryId)
     );
     const availableCat = expenseCats.find((c) => !existingBudgetCatIds.has(c.id)) || expenseCats[0];
     setBudgetCategoryId(availableCat ? availableCat.id : '');
@@ -401,6 +455,12 @@ export const PlanHub: React.FC<PlanHubProps> = ({
 
   return (
     <div className="space-y-5 pb-20">
+      <PlanMonthBar
+        month={selectedPlanMonth}
+        onMonthChange={setSelectedPlanMonth}
+        onCopyPrevious={handleCopyPrevious}
+        copyDisabled={!monthHasPlanData(appState, shiftMonth(selectedPlanMonth, -1))}
+      />
       {/* Tab Navigation Pill Bar - Clean Light Mode */}
       <div className="flex items-center gap-1.5 p-1.5 bg-white border border-slate-200 rounded-2xl overflow-x-auto shadow-sm text-xs">
         <button
@@ -576,7 +636,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                     <span>Hạn mức chi kế hoạch</span>
                   </span>
                   <span className="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-bold">
-                    {budgets.filter((b) => b.budgetType === 'EXPENSE_LIMIT').length} danh mục
+                    {filteredBudgets.filter((b) => b.budgetType === 'EXPENSE_LIMIT').length} danh mục
                   </span>
                 </div>
                 <div className="text-base font-extrabold text-rose-600">
@@ -668,7 +728,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {incomePlans.map((ip) => {
+              {filteredIncomePlans.map((ip) => {
                 const mem = memberMap.get(ip.memberId);
                 const memActualIncome = actualIncomeByMember.get(ip.memberId) || 0;
 
@@ -728,7 +788,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                 );
               })}
 
-              {incomePlans.length === 0 && (
+              {filteredIncomePlans.length === 0 && (
                 <div className="col-span-full p-6 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-300 text-slate-500 text-xs">
                   Chưa có nguồn thu nhập dự kiến nào. Nhấn &quot;Thêm nguồn thu&quot; để bắt đầu lập kế hoạch.
                 </div>
@@ -760,7 +820,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
             </div>
 
             <div className="space-y-3">
-              {budgets
+              {filteredBudgets
                 .filter((b) => b.budgetType === 'EXPENSE_LIMIT')
                 .map((b) => {
                   const cat = categoryMap.get(b.categoryId);
@@ -1361,10 +1421,10 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                 autoFocus
               >
                 <option value="">-- Chọn danh mục --</option>
-                {categories
+                {filteredCategories
                   .filter((c) => c.kind === 'EXPENSE' || c.kind === 'BOTH')
                   .map((cat) => {
-                    const hasBudget = budgets.some(
+                    const hasBudget = filteredBudgets.some(
                       (b) => b.categoryId === cat.id && b.budgetType === 'EXPENSE_LIMIT'
                     );
                     return (
@@ -1443,7 +1503,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                 onChange={(e) => setBudgetCategoryId(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-900 font-medium focus:outline-none focus:border-indigo-500 focus:bg-white"
               >
-                {categories
+                {filteredCategories
                   .filter((c) => c.kind === 'EXPENSE' || c.kind === 'BOTH')
                   .map((cat) => (
                     <option key={cat.id} value={cat.id}>
