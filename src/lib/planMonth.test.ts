@@ -12,8 +12,8 @@ import {
 function makeState(): AppState {
   return {
     categories: [
-      { id: 'food', month: '2026-07', name: 'Food', kind: 'EXPENSE', icon: 'food', color: 'red', dailySpend: true, isActive: true },
-      { id: 'rent', month: '2026-08', name: 'Rent', kind: 'EXPENSE', icon: 'home', color: 'blue', dailySpend: false, isActive: true },
+      { id: 'food', name: 'Food', kind: 'EXPENSE', icon: 'food', color: 'red', dailySpend: true, isActive: true },
+      { id: 'rent', name: 'Rent', kind: 'EXPENSE', icon: 'home', color: 'blue', dailySpend: false, isActive: true },
     ],
     budgets: [
       { id: 'food-budget', month: '2026-07', categoryId: 'food', budgetType: 'EXPENSE_LIMIT', plannedAmount: 100 },
@@ -26,10 +26,10 @@ function makeState(): AppState {
 }
 
 describe('plan month helpers', () => {
-  it('filters each plan collection and detects any plan data for a month', () => {
+  it('filters budgets/income by month; categories are shared', () => {
     const state = makeState();
 
-    expect(filterCategories(state, '2026-07')).toHaveLength(1);
+    expect(filterCategories(state, '2026-07')).toHaveLength(2);
     expect(filterBudgets(state, '2026-07')).toHaveLength(1);
     expect(filterIncomePlans(state, '2026-07')).toHaveLength(1);
     expect(monthHasPlanData(state, '2026-07')).toBe(true);
@@ -45,13 +45,15 @@ describe('plan month helpers', () => {
 
     const emptyTarget = {
       ...state,
-      categories: filterCategories(state, '2026-07'),
       budgets: filterBudgets(state, '2026-07'),
       incomePlans: filterIncomePlans(state, '2026-07'),
     };
     const copied = ensurePlanMonth(emptyTarget, '2026-08');
     expect(copied.didAutoCopy).toBe(true);
-    expect(filterCategories(copied.state, '2026-08')[0]).toMatchObject({ id: 'food', month: '2026-08' });
+    expect(filterBudgets(copied.state, '2026-08')).toEqual([
+      expect.objectContaining({ id: 'food-budget', month: '2026-08' }),
+    ]);
+    expect(copied.state.categories).toEqual(state.categories);
   });
 
   it('does not overwrite an existing target month unless requested', () => {
@@ -65,16 +67,12 @@ describe('plan month helpers', () => {
     const copied = copyPlanMonth(state, '2026-07', '2026-08', { overwrite: true });
 
     expect(copied).not.toBe(state);
-    expect(filterCategories(copied, '2026-08')).toEqual([
-      expect.objectContaining({ id: 'food', month: '2026-08' }),
-    ]);
+    expect(copied.categories).toEqual(state.categories);
     expect(filterBudgets(copied, '2026-08')).toEqual([
       expect.objectContaining({ id: 'food-budget', month: '2026-08' }),
     ]);
     expect(filterIncomePlans(copied, '2026-08')).toEqual([
       expect.objectContaining({ id: 'salary', month: '2026-08' }),
     ]);
-    expect(state.categories.find((category) => category.id === 'food')?.month).toBe('2026-07');
-    expect(filterCategories(copied, '2026-08').find((category) => category.id === 'food')?.month).toBe('2026-08');
   });
 });

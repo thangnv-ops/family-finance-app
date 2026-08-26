@@ -549,7 +549,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                   </div>
                   <div>
                     <h3 className="text-base font-extrabold flex items-center gap-2 text-slate-900">
-                      <span>Cân đối Kế hoạch Tháng {formatMonthVN(currentYM)}</span>
+                      <span>Cân đối Kế hoạch {formatMonthVN(currentYM)}</span>
                       <span
                         className={`text-xs px-2.5 py-0.5 rounded-full font-bold inline-flex items-center gap-1 ${
                           isPlannedSurplus
@@ -805,7 +805,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                   <span>Hạn mức ngân sách từng danh mục chi tiêu</span>
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Theo dõi Dự kiến / Thực tế / Còn lại và tỷ lệ sử dụng ngân sách tháng {formatMonthVN(currentYM)}
+                  Theo dõi Dự kiến / Thực tế / Còn lại và tỷ lệ sử dụng ngân sách {formatMonthVN(currentYM)}
                 </p>
               </div>
 
@@ -1340,7 +1340,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
 
             <div>
               <label className="block text-slate-700 font-semibold mb-1">
-                Số tiền dự kiến tháng {formatMonthVN(currentYM)} (VND)
+                Số tiền dự kiến {formatMonthVN(currentYM)} (VND)
               </label>
               <input
                 type="text"
@@ -1438,7 +1438,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
 
             <div>
               <label className="block text-slate-700 mb-1 font-semibold">
-                Hạn mức ngân sách tháng {formatMonthVN(currentYM)} (VND)
+                Hạn mức ngân sách {formatMonthVN(currentYM)} (VND)
               </label>
               <input
                 type="text"
