@@ -69,6 +69,7 @@ interface PlanHubProps {
   totalCash: number;
   onUpdateBudget: (budget: Budget) => void;
   onAddBudget?: (budget: Omit<Budget, 'id'>) => void;
+  onAddCategory?: (category: Category | Omit<Category, 'id'>) => string;
   onDeleteBudget?: (id: string) => void;
   onUpdateIncomePlan?: (ip: IncomePlan) => void;
   onAddIncomePlan?: (ip: Omit<IncomePlan, 'id'>) => void;
@@ -104,6 +105,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   totalCash,
   onUpdateBudget,
   onAddBudget,
+  onAddCategory,
   onDeleteBudget,
   onUpdateIncomePlan,
   onAddIncomePlan,
