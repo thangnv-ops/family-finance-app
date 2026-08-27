@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import {
+  budgetActualAmount,
   eventContainsDate,
   summarizeEventPlansForMonth,
   summarizeEventTransactions,
@@ -58,6 +59,7 @@ interface PlanHubProps {
   plannedExpenses: PlannedExpense[];
   goals: Goal[];
   events: EventBudget[];
+  currentCreditDebt: number;
   members: Member[];
   accounts: FinancialAccount[];
   onUpdateBudget: (budget: Budget) => void;
@@ -88,6 +90,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   plannedExpenses,
   goals,
   events,
+  currentCreditDebt,
   members,
   accounts,
   onUpdateBudget,
@@ -828,8 +831,16 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                   const dailyB = categoryMap.get(b.categoryId)?.dailySpend ? 1 : 0;
                   if (dailyA !== dailyB) return dailyB - dailyA;
 
-                  const actualA = actualCategorySpending.get(a.categoryId) || 0;
-                  const actualB = actualCategorySpending.get(b.categoryId) || 0;
+                  const actualA = budgetActualAmount(
+                    a.categoryId,
+                    actualCategorySpending.get(a.categoryId) || 0,
+                    currentCreditDebt
+                  );
+                  const actualB = budgetActualAmount(
+                    b.categoryId,
+                    actualCategorySpending.get(b.categoryId) || 0,
+                    currentCreditDebt
+                  );
                   const remainPctA =
                     a.plannedAmount > 0
                       ? ((a.plannedAmount - actualA) / a.plannedAmount) * 100
@@ -842,7 +853,11 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                 })
                 .map((b) => {
                   const cat = categoryMap.get(b.categoryId);
-                  const actual = actualCategorySpending.get(b.categoryId) || 0;
+                  const actual = budgetActualAmount(
+                    b.categoryId,
+                    actualCategorySpending.get(b.categoryId) || 0,
+                    currentCreditDebt
+                  );
                   const remaining = b.plannedAmount - actual;
                   const pct = Math.round((actual / (b.plannedAmount || 1)) * 100);
                   const isOver = remaining < 0;

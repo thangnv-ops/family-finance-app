@@ -48,6 +48,16 @@ export interface MonthlyStats {
   };
 }
 
+export function budgetActualAmount(
+  categoryId: string,
+  monthlyCategorySpending: number,
+  currentCreditDebt: number
+): number {
+  return categoryId === 'cat_tra_tin_dung'
+    ? Math.max(0, currentCreditDebt)
+    : monthlyCategorySpending;
+}
+
 export function eventContainsDate(event: EventBudget, date: string): boolean {
   return (
     event.status !== 'CANCELLED' &&
