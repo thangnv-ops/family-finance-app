@@ -4,6 +4,8 @@ import {
   rowToCategory,
   transactionToRow,
   rowToTransaction,
+  eventToRow,
+  rowToEvent,
 } from './mappers';
 
 describe('transaction mappers', () => {
@@ -23,6 +25,25 @@ describe('transaction mappers', () => {
     expect(row.household_id).toBe('11111111-1111-1111-1111-111111111111');
     expect(row.amount).toBe(1000);
     expect(rowToTransaction(row).description).toBe('Cafe');
+  });
+});
+
+describe('event mappers', () => {
+  it('round-trips planned income and expense totals', () => {
+    const event = {
+      id: 'event_1',
+      name: 'Về quê',
+      eventType: 'FAMILY' as const,
+      startDate: '2026-08-10',
+      endDate: '2026-08-12',
+      expectedIncome: 2_000_000,
+      budgetAmount: 8_000_000,
+      status: 'PLANNING' as const,
+    };
+
+    const row = eventToRow('11111111-1111-1111-1111-111111111111', event);
+    expect(row.expected_income).toBe(2_000_000);
+    expect(rowToEvent(row)).toEqual(event);
   });
 });
 

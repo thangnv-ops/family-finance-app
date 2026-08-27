@@ -7,8 +7,6 @@ import {
   PlannedExpense,
   Goal,
   EventBudget,
-  EventBudgetItem,
-  EventContribution,
   Member,
   FinancialAccount,
 } from '../../types/finance';
@@ -30,7 +28,6 @@ import {
   TrendingUp,
   TrendingDown,
   Plane,
-  Gift,
   ChevronRight,
   ArrowRightLeft,
   Users,
@@ -43,8 +40,14 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   CheckCircle,
+  ChevronDown,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import {
+  eventContainsDate,
+  summarizeEventPlansForMonth,
+  summarizeEventTransactions,
+} from '../../lib/ledger';
 
 interface PlanHubProps {
   appState: AppState;
@@ -55,8 +58,6 @@ interface PlanHubProps {
   plannedExpenses: PlannedExpense[];
   goals: Goal[];
   events: EventBudget[];
-  eventItems: EventBudgetItem[];
-  eventContributions: EventContribution[];
   members: Member[];
   accounts: FinancialAccount[];
   onUpdateBudget: (budget: Budget) => void;
@@ -71,6 +72,8 @@ interface PlanHubProps {
   onAddGoal: (goal: Omit<Goal, 'id'>) => void;
   onUpdateGoal: (goal: Goal) => void;
   onAddEvent: (ev: Omit<EventBudget, 'id'>) => void;
+  onUpdateEvent: (ev: EventBudget) => void;
+  onDeleteEvent: (id: string) => void;
   onApplyPlanState: (
     partial: Pick<AppState, 'categories' | 'budgets' | 'incomePlans'>
   ) => void;
@@ -85,8 +88,6 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   plannedExpenses,
   goals,
   events,
-  eventItems,
-  eventContributions,
   members,
   accounts,
   onUpdateBudget,
@@ -101,6 +102,8 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   onAddGoal,
   onUpdateGoal,
   onAddEvent,
+  onUpdateEvent,
+  onDeleteEvent,
   onApplyPlanState,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<
@@ -206,17 +209,23 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   }, [actualCategorySpending]);
 
   // Planned totals & Calculations
+  const eventPlans = useMemo(
+    () => summarizeEventPlansForMonth(events, currentYM),
+    [events, currentYM]
+  );
   const totalPlannedIncome = useMemo(
-    () => filteredIncomePlans.reduce((sum, ip) => sum + (ip.expectedAmount || 0), 0),
-    [filteredIncomePlans]
+    () =>
+      filteredIncomePlans.reduce((sum, ip) => sum + (ip.expectedAmount || 0), 0) +
+      eventPlans.income,
+    [filteredIncomePlans, eventPlans.income]
   );
 
   const totalExpenseBudget = useMemo(
     () =>
       filteredBudgets
         .filter((b) => b.budgetType === 'EXPENSE_LIMIT')
-        .reduce((sum, b) => sum + (b.plannedAmount || 0), 0),
-    [filteredBudgets]
+        .reduce((sum, b) => sum + (b.plannedAmount || 0), 0) + eventPlans.expense,
+    [filteredBudgets, eventPlans.expense]
   );
 
   // Net Planned Balance: Planned Income - Planned Expense Budgets
@@ -253,6 +262,50 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   const [incomeSourceName, setIncomeSourceName] = useState('');
   const [incomeMemberId, setIncomeMemberId] = useState('thang');
   const [incomeExpectedAmount, setIncomeExpectedAmount] = useState('');
+
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<EventBudget | null>(null);
+  const [eventName, setEventName] = useState('');
+  const [eventType, setEventType] = useState<EventBudget['eventType']>('TRAVEL');
+  const [eventStartDate, setEventStartDate] = useState('');
+  const [eventEndDate, setEventEndDate] = useState('');
+  const [eventExpectedIncome, setEventExpectedIncome] = useState('');
+  const [eventExpectedExpense, setEventExpectedExpense] = useState('');
+  const [eventNote, setEventNote] = useState('');
+
+  const openEventModal = (event?: EventBudget) => {
+    setEditingEvent(event || null);
+    setEventName(event?.name || '');
+    setEventType(event?.eventType || 'TRAVEL');
+    setEventStartDate(event?.startDate || `${currentYM}-01`);
+    setEventEndDate(event?.endDate || event?.startDate || `${currentYM}-01`);
+    setEventExpectedIncome(String(event?.expectedIncome || ''));
+    setEventExpectedExpense(String(event?.budgetAmount || ''));
+    setEventNote(event?.note || '');
+    setShowEventModal(true);
+  };
+
+  const handleSaveEvent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!eventName.trim() || !eventStartDate || !eventEndDate) return;
+    if (eventEndDate < eventStartDate) {
+      alert('Ngày kết thúc phải từ ngày bắt đầu trở đi.');
+      return;
+    }
+    const values: Omit<EventBudget, 'id'> = {
+      name: eventName.trim(),
+      eventType,
+      startDate: eventStartDate,
+      endDate: eventEndDate,
+      expectedIncome: Number(eventExpectedIncome.replace(/[^0-9]/g, '')) || 0,
+      budgetAmount: Number(eventExpectedExpense.replace(/[^0-9]/g, '')) || 0,
+      status: editingEvent?.status || 'PLANNING',
+      note: eventNote.trim() || undefined,
+    };
+    if (editingEvent) onUpdateEvent({ ...values, id: editingEvent.id });
+    else onAddEvent(values);
+    setShowEventModal(false);
+  };
 
   const handleOpenAddIncome = () => {
     setEditingIncomePlan(null);
@@ -1004,21 +1057,41 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                 Theo dõi ngân sách du lịch, cưới hỏi, mừng thôi nôi và chia tiền
               </p>
             </div>
+            <button
+              type="button"
+              onClick={() => openEventModal()}
+              className="px-3.5 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              Tạo sự kiện
+            </button>
           </div>
 
+          {events.length === 0 && (
+            <button
+              type="button"
+              onClick={() => openEventModal()}
+              className="w-full min-h-48 bg-white border border-dashed border-slate-300 rounded-3xl text-slate-500 hover:border-cyan-400 hover:text-cyan-700 transition-colors flex flex-col items-center justify-center gap-2 cursor-pointer"
+            >
+              <Plane className="w-8 h-8" />
+              <span className="font-bold">Tạo sự kiện đầu tiên</span>
+              <span className="text-xs">Theo dõi Thu/Chi trong một khoảng thời gian</span>
+            </button>
+          )}
+
           {events.map((ev) => {
-            const items = eventItems.filter((i) => i.eventId === ev.id);
-            const contributions = eventContributions.filter((c) => c.eventId === ev.id);
-            const totalPlanned = items.reduce((sum, i) => sum + i.plannedAmount, 0);
-            const totalActual = items.reduce((sum, i) => sum + i.actualAmount, 0);
-            const totalGifts = contributions.reduce((sum, c) => sum + c.amount, 0);
+            const actual = summarizeEventTransactions(ev, transactions);
+            const eventTransactions = transactions.filter(
+              (tx) => !tx.deletedAt && eventContainsDate(ev, tx.transactionDate)
+            );
+            const remaining = Math.max(0, (ev.budgetAmount || 0) - actual.expense);
 
             return (
               <div
                 key={ev.id}
                 className="bg-white border border-slate-200 rounded-3xl p-5 space-y-4 shadow-sm"
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold border border-indigo-200">
                       <Plane className="w-5 h-5" />
@@ -1031,57 +1104,206 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                     </div>
                   </div>
 
-                  <div className="text-right text-xs">
-                    <span className="text-slate-500 block text-[10px] uppercase font-semibold">
-                      Ngân sách dự kiến
-                    </span>
-                    <span className="text-base font-extrabold text-indigo-600">
-                      {formatVND(ev.budgetAmount || totalPlanned)}
-                    </span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openEventModal(ev)}
+                      className="p-2 border border-slate-200 rounded-xl text-slate-500 hover:text-indigo-700 hover:bg-indigo-50 cursor-pointer"
+                      title="Sửa sự kiện"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm(`Xóa sự kiện “${ev.name}”?`)) onDeleteEvent(ev.id);
+                      }}
+                      className="p-2 border border-slate-200 rounded-xl text-slate-500 hover:text-rose-700 hover:bg-rose-50 cursor-pointer"
+                      title="Xóa sự kiện"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
 
-                {/* Items breakdown */}
-                <div className="space-y-2 pt-2 border-t border-slate-200">
-                  <h5 className="text-xs font-bold text-slate-700">Hạng mục chi phí dự kiến:</h5>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-                    {items.map((item) => (
-                      <div
-                        key={item.id}
-                        className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex items-center justify-between"
-                      >
-                        <div>
-                          <span className="font-semibold text-slate-900 block">{item.title}</span>
-                          <span className="text-[10px] text-slate-500">{item.status}</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="font-bold text-slate-800">
-                            {formatVND(item.plannedAmount)}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Contributions / Gifts if any */}
-                {contributions.length > 0 && (
-                  <div className="bg-emerald-50/70 p-3.5 rounded-2xl border border-emerald-200 text-xs">
-                    <div className="flex items-center gap-1.5 font-bold text-emerald-800 mb-1.5">
-                      <Gift className="w-4 h-4 text-emerald-600" />
-                      <span>Đóng góp / Tiền mừng nhận được:</span>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
+                  {[
+                    ['Thu dự kiến', ev.expectedIncome || 0, 'text-emerald-700', 'bg-emerald-50'],
+                    ['Chi dự kiến', ev.budgetAmount || 0, 'text-rose-700', 'bg-rose-50'],
+                    ['Thu thực tế', actual.income, 'text-emerald-700', 'bg-emerald-50'],
+                    ['Chi thực tế', actual.expense, 'text-rose-700', 'bg-rose-50'],
+                  ].map(([label, amount, color, bg]) => (
+                    <div key={String(label)} className={`${bg} border border-slate-200 rounded-2xl p-3`}>
+                      <span className="text-slate-500 block text-[10px] font-semibold">{label}</span>
+                      <strong className={`text-sm sm:text-base ${color}`}>{formatVND(Number(amount))}</strong>
                     </div>
-                    {contributions.map((c) => (
-                      <div key={c.id} className="flex justify-between text-slate-700 text-xs py-0.5">
-                        <span>{c.note || 'Khoản đóng góp'}</span>
-                        <span className="font-bold text-emerald-700">+{formatVND(c.amount)}</span>
-                      </div>
-                    ))}
+                  ))}
+                </div>
+
+                <div className="text-xs text-slate-600">
+                  Còn lại <strong className="text-indigo-700 text-sm">{formatVND(remaining)}</strong>
+                </div>
+
+                <details className="group border border-slate-200 rounded-2xl overflow-hidden">
+                  <summary className="list-none p-3.5 flex items-center justify-between cursor-pointer bg-slate-50 hover:bg-slate-100">
+                    <div>
+                      <span className="font-bold text-sm text-slate-900 block">
+                        Giao dịch trong sự kiện ({eventTransactions.length})
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        Tự động tổng hợp từ {formatDateVN(ev.startDate)} đến {formatDateVN(ev.endDate || ev.startDate)}
+                      </span>
+                    </div>
+                    <ChevronDown className="w-4 h-4 text-slate-500 group-open:rotate-180 transition-transform" />
+                  </summary>
+                  <div className="divide-y divide-slate-100">
+                    {eventTransactions.length === 0 ? (
+                      <p className="p-4 text-xs text-slate-400 text-center">Chưa có giao dịch trong thời gian này.</p>
+                    ) : (
+                      eventTransactions.map((tx) => (
+                        <div key={tx.id} className="px-4 py-3 flex items-center justify-between gap-3 text-xs">
+                          <div className="min-w-0">
+                            <span className="font-semibold text-slate-900 truncate block">{tx.description}</span>
+                            <span className="text-[10px] text-slate-500">{formatDateVN(tx.transactionDate)}</span>
+                          </div>
+                          <strong className={tx.transactionType === 'INCOME' ? 'text-emerald-700' : 'text-rose-700'}>
+                            {tx.transactionType === 'INCOME' ? '+' : '-'}{formatVND(tx.amount)}
+                          </strong>
+                        </div>
+                      ))
+                    )}
                   </div>
-                )}
+                </details>
+
+                <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 text-[11px] text-blue-700">
+                  Giao dịch trong thời gian sự kiện được tự động tổng hợp và không tính vào “Hôm nay nên giữ khoảng”.
+                </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {showEventModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <form
+            onSubmit={handleSaveEvent}
+            className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl p-5 space-y-4 text-xs shadow-xl"
+          >
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-base text-slate-900">
+                {editingEvent ? 'Sửa sự kiện' : 'Tạo sự kiện'}
+              </h4>
+              <button
+                type="button"
+                onClick={() => setShowEventModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Tên sự kiện</label>
+              <input
+                required
+                autoFocus
+                value={eventName}
+                onChange={(e) => setEventName(e.target.value)}
+                placeholder="VD: Về quê Hà Tĩnh, Du lịch Đà Nẵng..."
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Loại sự kiện</label>
+              <select
+                value={eventType}
+                onChange={(e) => setEventType(e.target.value as EventBudget['eventType'])}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-500"
+              >
+                <option value="TRAVEL">Du lịch / Chuyến đi</option>
+                <option value="FAMILY">Gia đình / Về quê</option>
+                <option value="WEDDING">Cưới hỏi</option>
+                <option value="BABY">Em bé / Thôi nôi</option>
+                <option value="CELEBRATION">Kỷ niệm / Ăn mừng</option>
+                <option value="OTHER">Khác</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Ngày bắt đầu</label>
+                <input
+                  required
+                  type="date"
+                  value={eventStartDate}
+                  onChange={(e) => setEventStartDate(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Ngày kết thúc</label>
+                <input
+                  required
+                  type="date"
+                  min={eventStartDate}
+                  value={eventEndDate}
+                  onChange={(e) => setEventEndDate(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-emerald-700 font-semibold mb-1">Thu dự kiến</label>
+                <input
+                  inputMode="numeric"
+                  value={eventExpectedIncome ? Number(eventExpectedIncome).toLocaleString('vi-VN') : ''}
+                  onChange={(e) => setEventExpectedIncome(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="0"
+                  className="w-full bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 text-sm font-bold text-emerald-700 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-rose-700 font-semibold mb-1">Chi dự kiến</label>
+                <input
+                  inputMode="numeric"
+                  value={eventExpectedExpense ? Number(eventExpectedExpense).toLocaleString('vi-VN') : ''}
+                  onChange={(e) => setEventExpectedExpense(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="0"
+                  className="w-full bg-rose-50 border border-rose-200 rounded-xl px-3 py-2.5 text-sm font-bold text-rose-700 focus:outline-none focus:border-rose-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-semibold mb-1">Ghi chú</label>
+              <textarea
+                value={eventNote}
+                onChange={(e) => setEventNote(e.target.value)}
+                rows={2}
+                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-cyan-500"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowEventModal(false)}
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                className="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl font-bold shadow-sm cursor-pointer"
+              >
+                Lưu sự kiện
+              </button>
+            </div>
+          </form>
         </div>
       )}
 

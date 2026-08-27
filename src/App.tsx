@@ -169,9 +169,10 @@ function AuthenticatedApp({
       appState.transactions,
       appState.categories,
       appState.budgets,
-      currentYM
+      currentYM,
+      appState.events
     );
-  }, [appState?.transactions, appState?.categories, appState?.budgets, currentYM]);
+  }, [appState?.transactions, appState?.categories, appState?.budgets, appState?.events, currentYM]);
 
   const visibleTransactions = useMemo(() => {
     if (!appState) return [];
@@ -566,8 +567,6 @@ function AuthenticatedApp({
             plannedExpenses={appState.plannedExpenses}
             goals={appState.goals}
             events={appState.events}
-            eventItems={appState.eventItems}
-            eventContributions={appState.eventContributions}
             members={appState.members}
             accounts={appState.accounts}
             onApplyPlanState={(partial) =>
@@ -651,6 +650,18 @@ function AuthenticatedApp({
               setAppState((p) => ({
                 ...p,
                 events: [...p.events, { ...ev, id: `ev_${Date.now()}` }],
+              }))
+            }
+            onUpdateEvent={(ev) =>
+              setAppState((p) => ({
+                ...p,
+                events: p.events.map((item) => (item.id === ev.id ? ev : item)),
+              }))
+            }
+            onDeleteEvent={(id) =>
+              setAppState((p) => ({
+                ...p,
+                events: p.events.filter((item) => item.id !== id),
               }))
             }
           />

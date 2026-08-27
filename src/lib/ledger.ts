@@ -12,6 +12,7 @@ import {
   Budget,
   Category,
   CreditCardConfig,
+  EventBudget,
 } from '../types/finance';
 import { getCurrentMonthStr, getDaysInMonth } from './formatters';
 import { reservedGoalAmount } from './goals';
@@ -45,6 +46,50 @@ export interface MonthlyStats {
     thang: { income: number; expense: number; cashSpent: number };
     van: { income: number; expense: number; cashSpent: number };
   };
+}
+
+export function eventContainsDate(event: EventBudget, date: string): boolean {
+  return (
+    event.status !== 'CANCELLED' &&
+    date >= event.startDate &&
+    date <= (event.endDate || event.startDate)
+  );
+}
+
+export function summarizeEventTransactions(
+  event: EventBudget,
+  transactions: Transaction[]
+): { income: number; expense: number; transactionsCount: number } {
+  let income = 0;
+  let expense = 0;
+  let transactionsCount = 0;
+
+  for (const tx of transactions) {
+    if (tx.deletedAt || !eventContainsDate(event, tx.transactionDate)) continue;
+    transactionsCount += 1;
+    if (tx.transactionType === 'INCOME') income += tx.amount;
+    if (tx.transactionType === 'EXPENSE' || tx.transactionType === 'CREDIT_PURCHASE') {
+      expense += tx.amount;
+    }
+  }
+
+  return { income, expense, transactionsCount };
+}
+
+export function summarizeEventPlansForMonth(
+  events: EventBudget[],
+  month: string
+): { income: number; expense: number } {
+  return events.reduce(
+    (total, event) => {
+      if (event.status !== 'CANCELLED' && event.startDate.startsWith(month)) {
+        total.income += event.expectedIncome || 0;
+        total.expense += event.budgetAmount || 0;
+      }
+      return total;
+    },
+    { income: 0, expense: 0 }
+  );
 }
 
 export interface DailyAdvisorData {
@@ -326,7 +371,8 @@ export function calculateDailyAdvisor(
   transactions: Transaction[],
   categories: Category[],
   budgets: Budget[],
-  targetMonth?: string
+  targetMonth?: string,
+  events: EventBudget[] = []
 ): DailyAdvisorData {
   const currentYM = targetMonth || getCurrentMonthStr();
   const today = new Date();
@@ -334,7 +380,10 @@ export function calculateDailyAdvisor(
   const totalDays = getDaysInMonth(currentYM);
   const remainingDays = Math.max(1, totalDays - currentDay + 1);
 
-  const monthStats = calculateMonthlyStats(currentYM, transactions, categories, budgets);
+  const dailyTransactions = transactions.filter(
+    (tx) => !events.some((event) => eventContainsDate(event, tx.transactionDate))
+  );
+  const monthStats = calculateMonthlyStats(currentYM, dailyTransactions, categories, budgets);
   const dailyBudget = monthStats.dailySpendBudget || 15_000_000; // Default sensible 15M VND if not set
   const mtdSpend = monthStats.dailySpendActual;
 
@@ -342,7 +391,9 @@ export function calculateDailyAdvisor(
   const recommendedToday = Math.round(remainingDailyBudget / remainingDays);
 
   // Calculate 7-day average pace
-  const activeTx = transactions.filter((t) => !t.deletedAt && t.transactionDate.startsWith(currentYM));
+  const activeTx = dailyTransactions.filter(
+    (t) => !t.deletedAt && t.transactionDate.startsWith(currentYM)
+  );
   const dailyCatIds = new Set(categories.filter((c) => c.dailySpend).map((c) => c.id));
 
   const dayMap: Record<number, number> = {};

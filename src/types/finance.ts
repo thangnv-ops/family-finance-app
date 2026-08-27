@@ -215,6 +215,7 @@ export interface EventBudget {
   eventType: 'TRAVEL' | 'WEDDING' | 'BABY' | 'FAMILY' | 'CELEBRATION' | 'OTHER';
   startDate: string;
   endDate?: string;
+  expectedIncome?: number;
   budgetAmount?: number;
   status: 'PLANNING' | 'ONGOING' | 'COMPLETED' | 'CANCELLED';
   note?: string;
