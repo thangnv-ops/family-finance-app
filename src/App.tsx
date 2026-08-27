@@ -567,7 +567,6 @@ function AuthenticatedApp({
             plannedExpenses={appState.plannedExpenses}
             goals={appState.goals}
             events={appState.events}
-            currentCreditDebt={balances.tin_dung}
             members={appState.members}
             accounts={appState.accounts}
             onApplyPlanState={(partial) =>

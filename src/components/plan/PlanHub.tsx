@@ -45,6 +45,7 @@ import {
 import confetti from 'canvas-confetti';
 import {
   budgetActualAmount,
+  calculateCreditPayments,
   eventContainsDate,
   summarizeEventPlansForMonth,
   summarizeEventTransactions,
@@ -59,7 +60,6 @@ interface PlanHubProps {
   plannedExpenses: PlannedExpense[];
   goals: Goal[];
   events: EventBudget[];
-  currentCreditDebt: number;
   members: Member[];
   accounts: FinancialAccount[];
   onUpdateBudget: (budget: Budget) => void;
@@ -90,7 +90,6 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   plannedExpenses,
   goals,
   events,
-  currentCreditDebt,
   members,
   accounts,
   onUpdateBudget,
@@ -190,6 +189,11 @@ export const PlanHub: React.FC<PlanHubProps> = ({
       });
     return sum;
   }, [transactions, selectedPlanMonth]);
+
+  const creditPayments = useMemo(
+    () => calculateCreditPayments(selectedPlanMonth, transactions),
+    [selectedPlanMonth, transactions]
+  );
 
   // Actual income received per member
   const actualIncomeByMember = useMemo(() => {
@@ -834,12 +838,12 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                   const actualA = budgetActualAmount(
                     a.categoryId,
                     actualCategorySpending.get(a.categoryId) || 0,
-                    currentCreditDebt
+                    creditPayments
                   );
                   const actualB = budgetActualAmount(
                     b.categoryId,
                     actualCategorySpending.get(b.categoryId) || 0,
-                    currentCreditDebt
+                    creditPayments
                   );
                   const remainPctA =
                     a.plannedAmount > 0
@@ -856,7 +860,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                   const actual = budgetActualAmount(
                     b.categoryId,
                     actualCategorySpending.get(b.categoryId) || 0,
-                    currentCreditDebt
+                    creditPayments
                   );
                   const remaining = b.plannedAmount - actual;
                   const pct = Math.round((actual / (b.plannedAmount || 1)) * 100);

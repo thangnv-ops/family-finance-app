@@ -51,11 +51,22 @@ export interface MonthlyStats {
 export function budgetActualAmount(
   categoryId: string,
   monthlyCategorySpending: number,
-  currentCreditDebt: number
+  monthlyCreditPayments: number
 ): number {
   return categoryId === 'cat_tra_tin_dung'
-    ? Math.max(0, currentCreditDebt)
+    ? monthlyCreditPayments
     : monthlyCategorySpending;
+}
+
+export function calculateCreditPayments(month: string, transactions: Transaction[]): number {
+  return transactions
+    .filter(
+      (tx) =>
+        !tx.deletedAt &&
+        tx.transactionDate.startsWith(month) &&
+        tx.transactionType === 'CREDIT_PAYMENT'
+    )
+    .reduce((sum, tx) => sum + tx.amount, 0);
 }
 
 export function eventContainsDate(event: EventBudget, date: string): boolean {
