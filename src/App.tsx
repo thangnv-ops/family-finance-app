@@ -28,7 +28,6 @@ import {
   Goal,
   EventBudget,
   Budget,
-  RecurringTransaction,
   SuggestionRule,
 } from './types/finance';
 
@@ -468,22 +467,6 @@ function AuthenticatedApp({
     }));
   };
 
-  // Handler: Confirm Recurring Transaction
-  const handleConfirmRecurring = (rec: RecurringTransaction) => {
-    handleSaveTransaction({
-      transactionDate: getTodayDateStr(),
-      transactionType: rec.type,
-      amount: rec.amount,
-      currency: 'VND',
-      description: rec.title,
-      categoryId: rec.categoryId,
-      sourceAccountId: rec.type === 'EXPENSE' ? rec.accountId : undefined,
-      destinationAccountId: rec.type === 'INCOME' ? rec.accountId : undefined,
-      memberId: rec.memberId,
-    });
-    alert(`Đã ghi nhận giao dịch định kỳ "${rec.title}" vào sổ sách thành công!`);
-  };
-
   const handleExportBackup = () => {
     exportAppStateAsJSON(appState);
   };
@@ -554,7 +537,6 @@ function AuthenticatedApp({
             savingsDeposits={appState.savingsDeposits}
             loans={appState.loans}
             plannedExpenses={appState.plannedExpenses}
-            recurringTransactions={appState.recurringTransactions}
             onOpenQuickAdd={() => setIsQuickAddOpen(true)}
             onSelectTransaction={(tx) => setSelectedTx(tx)}
             onNavigateToTab={(tab) => setActiveTab(tab)}
@@ -586,7 +568,6 @@ function AuthenticatedApp({
             events={appState.events}
             eventItems={appState.eventItems}
             eventContributions={appState.eventContributions}
-            recurringTransactions={appState.recurringTransactions}
             members={appState.members}
             accounts={appState.accounts}
             onApplyPlanState={(partial) =>
@@ -672,7 +653,6 @@ function AuthenticatedApp({
                 events: [...p.events, { ...ev, id: `ev_${Date.now()}` }],
               }))
             }
-            onConfirmRecurring={handleConfirmRecurring}
           />
         )}
 
@@ -716,6 +696,9 @@ function AuthenticatedApp({
                   { ...rule, id: `rule_${Date.now()}` },
                 ],
               }))
+            }
+            onUpdateCreditCardConfig={(creditCardConfig) =>
+              setAppState((p) => ({ ...p, creditCardConfig }))
             }
             onExportBackup={handleExportBackup}
             onImportBackup={handleImportBackup}

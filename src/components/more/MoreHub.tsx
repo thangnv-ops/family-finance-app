@@ -15,6 +15,7 @@ import {
 } from '../../types/finance';
 import { AccountBalances } from '../../lib/ledger';
 import { formatVND, formatDateVN, getTodayDateStr } from '../../lib/formatters';
+import { validateCreditCardDays } from '../../lib/creditCard';
 import { CategoryIcon } from '../common/CategoryIcon';
 import {
   Wallet,
@@ -34,6 +35,8 @@ import {
   Layers,
   ChevronRight,
   User,
+  Pencil,
+  X,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -56,6 +59,7 @@ interface MoreHubProps {
   onCollectLoan: (loanId: string, amount: number, destinationAccountId: string) => void;
   onAddLoan: (loan: Omit<Loan, 'id' | 'createdAt'>) => void;
   onAddSuggestionRule: (rule: Omit<SuggestionRule, 'id'>) => void;
+  onUpdateCreditCardConfig: (config: CreditCardConfig) => void;
   onExportBackup: () => void;
   onImportBackup: (jsonText: string) => void;
   onResetData: () => void;
@@ -80,6 +84,7 @@ export const MoreHub: React.FC<MoreHubProps> = ({
   onCollectLoan,
   onAddLoan,
   onAddSuggestionRule,
+  onUpdateCreditCardConfig,
   onExportBackup,
   onImportBackup,
   onResetData,
@@ -115,6 +120,29 @@ export const MoreHub: React.FC<MoreHubProps> = ({
   const [newRuleKeyword, setNewRuleKeyword] = useState('');
   const [newRuleType, setNewRuleType] = useState<any>('EXPENSE');
   const [newRuleCategory, setNewRuleCategory] = useState('');
+
+  const [showEditCreditDaysModal, setShowEditCreditDaysModal] = useState(false);
+  const [statementDayInput, setStatementDayInput] = useState('');
+  const [dueDayInput, setDueDayInput] = useState('');
+
+  const handleOpenEditCreditDays = () => {
+    setStatementDayInput(String(creditCardConfig.statementDay));
+    setDueDayInput(String(creditCardConfig.dueDay));
+    setShowEditCreditDaysModal(true);
+  };
+
+  const handleSaveCreditDays = (e: React.FormEvent) => {
+    e.preventDefault();
+    const statementDay = Number(statementDayInput);
+    const dueDay = Number(dueDayInput);
+    const error = validateCreditCardDays(statementDay, dueDay);
+    if (error) {
+      alert(error);
+      return;
+    }
+    onUpdateCreditCardConfig({ ...creditCardConfig, statementDay, dueDay });
+    setShowEditCreditDaysModal(false);
+  };
 
   const handleOpenReconcile = (acc: FinancialAccount) => {
     setReconcileAccount(acc);
@@ -365,7 +393,7 @@ export const MoreHub: React.FC<MoreHubProps> = ({
       {activeSection === 'credit' && (
         <div className="space-y-4">
           <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                   <CreditCard className="w-5 h-5 text-amber-600" />
@@ -376,13 +404,24 @@ export const MoreHub: React.FC<MoreHubProps> = ({
                 </span>
               </div>
 
-              <div className="text-right">
+              <div className="text-right flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleOpenEditCreditDays}
+                  className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                  title="Sửa ngày sao kê và hạn thanh toán"
+                  aria-label="Sửa ngày sao kê và hạn thanh toán"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <div>
                 <span className="text-[10px] text-slate-500 uppercase font-semibold block">
                   Hạn mức tín dụng
                 </span>
                 <span className="text-base font-extrabold text-slate-900">
                   {formatVND(creditCardConfig.creditLimit)}
                 </span>
+                </div>
               </div>
             </div>
 
@@ -434,6 +473,57 @@ export const MoreHub: React.FC<MoreHubProps> = ({
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {showEditCreditDaysModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <form
+            onSubmit={handleSaveCreditDays}
+            className="w-full max-w-sm bg-white border border-slate-200 rounded-3xl p-5 space-y-4 shadow-xl"
+          >
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-base text-slate-900">Sửa lịch thẻ tín dụng</h4>
+              <button
+                type="button"
+                onClick={() => setShowEditCreditDaysModal(false)}
+                className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100"
+                aria-label="Đóng"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <label className="block text-xs font-semibold text-slate-700">
+              Ngày chốt sao kê
+              <input
+                type="number"
+                min="1"
+                max="31"
+                required
+                value={statementDayInput}
+                onChange={(e) => setStatementDayInput(e.target.value)}
+                className="mt-1.5 w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+              />
+            </label>
+            <label className="block text-xs font-semibold text-slate-700">
+              Hạn thanh toán
+              <input
+                type="number"
+                min="1"
+                max="31"
+                required
+                value={dueDayInput}
+                onChange={(e) => setDueDayInput(e.target.value)}
+                className="mt-1.5 w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+              />
+            </label>
+            <button
+              type="submit"
+              className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold transition-colors"
+            >
+              Lưu thay đổi
+            </button>
+          </form>
         </div>
       )}
 

@@ -17,7 +17,6 @@ import type {
   EventBudget,
   EventBudgetItem,
   EventContribution,
-  RecurringTransaction,
   AuditLog,
   Role,
   TransactionType,
@@ -582,42 +581,6 @@ export function rowToEventContribution(row: Record<string, unknown>): EventContr
     receivedDate: dateStr(row.received_date),
     contributionType: row.contribution_type as EventContribution['contributionType'],
     note: optStr(row.note),
-  };
-}
-
-// ---- recurring ----
-export function recurringTransactionToRow(householdId: HouseholdId, r: RecurringTransaction) {
-  return {
-    household_id: householdId,
-    id: r.id,
-    title: r.title,
-    type: r.type,
-    amount: r.amount,
-    frequency: r.frequency,
-    day_of_month: r.dayOfMonth,
-    next_date: r.nextDate,
-    category_id: r.categoryId,
-    account_id: r.accountId,
-    member_id: r.memberId,
-    is_active: r.isActive,
-    last_confirmed_date: r.lastConfirmedDate ?? null,
-  };
-}
-
-export function rowToRecurringTransaction(row: Record<string, unknown>): RecurringTransaction {
-  return {
-    id: String(row.id),
-    title: String(row.title),
-    type: row.type as TransactionType,
-    amount: Number(row.amount),
-    frequency: row.frequency as RecurringTransaction['frequency'],
-    dayOfMonth: Number(row.day_of_month),
-    nextDate: dateStr(row.next_date),
-    categoryId: String(row.category_id),
-    accountId: String(row.account_id),
-    memberId: String(row.member_id),
-    isActive: Boolean(row.is_active),
-    lastConfirmedDate: row.last_confirmed_date == null ? undefined : dateStr(row.last_confirmed_date),
   };
 }
 

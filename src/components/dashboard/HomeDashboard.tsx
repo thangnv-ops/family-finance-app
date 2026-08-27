@@ -10,7 +10,6 @@ import {
   PlannedExpense,
   CreditCardConfig,
   CreditCardStatement,
-  RecurringTransaction,
 } from '../../types/finance';
 import {
   AccountBalances,
@@ -56,7 +55,6 @@ interface HomeDashboardProps {
   savingsDeposits: SavingsDeposit[];
   loans: Loan[];
   plannedExpenses: PlannedExpense[];
-  recurringTransactions: RecurringTransaction[];
   onOpenQuickAdd: () => void;
   onSelectTransaction: (tx: Transaction) => void;
   onNavigateToTab: (tab: 'transactions' | 'plan' | 'insights' | 'more') => void;
@@ -76,7 +74,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   savingsDeposits,
   loans,
   plannedExpenses,
-  recurringTransactions,
   onOpenQuickAdd,
   onSelectTransaction,
   onNavigateToTab,

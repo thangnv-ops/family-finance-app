@@ -20,7 +20,6 @@ import {
   rowToLoan,
   rowToMember,
   rowToPlannedExpense,
-  rowToRecurringTransaction,
   rowToSavingsDeposit,
   rowToSuggestionRule,
   rowToTransaction,
@@ -59,7 +58,6 @@ const FROM_ROW: Record<ArrayCollectionKey, RowMapper> = {
   events: rowToEvent,
   eventItems: rowToEventItem,
   eventContributions: rowToEventContribution,
-  recurringTransactions: rowToRecurringTransaction,
   auditLogs: rowToAuditLog,
 };
 

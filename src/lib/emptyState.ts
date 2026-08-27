@@ -34,7 +34,6 @@ export function createEmptyAppState(householdName: string): AppState {
     events: [],
     eventItems: [],
     eventContributions: [],
-    recurringTransactions: [],
     auditLogs: [],
   };
 }

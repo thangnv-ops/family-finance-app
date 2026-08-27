@@ -240,21 +240,6 @@ export interface EventContribution {
   note?: string;
 }
 
-export interface RecurringTransaction {
-  id: string;
-  title: string;
-  type: TransactionType;
-  amount: number;
-  frequency: 'MONTHLY' | 'WEEKLY' | 'YEARLY';
-  dayOfMonth: number; // 1-31
-  nextDate: string;
-  categoryId: string;
-  accountId: string;
-  memberId: string;
-  isActive: boolean;
-  lastConfirmedDate?: string;
-}
-
 export interface AuditLog {
   id: string;
   entityType: 'TRANSACTION' | 'BALANCE_ADJUSTMENT' | 'BUDGET' | 'FUND' | 'LOAN' | 'SAVINGS';

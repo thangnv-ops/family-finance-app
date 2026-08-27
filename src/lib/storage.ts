@@ -21,7 +21,6 @@ import {
   EventBudget,
   EventBudgetItem,
   EventContribution,
-  RecurringTransaction,
   AuditLog,
 } from '../types/finance';
 import { getCurrentMonthStr, getTodayDateStr } from './formatters';
@@ -49,7 +48,6 @@ export interface AppState {
   events: EventBudget[];
   eventItems: EventBudgetItem[];
   eventContributions: EventContribution[];
-  recurringTransactions: RecurringTransaction[];
   auditLogs: AuditLog[];
   lastBackupDate?: string;
 }
@@ -506,65 +504,6 @@ export function getInitialSeedState(): AppState {
     { id: 'evc_1', eventId: 'ev_danang', counterpartyId: 'cp_nam', amount: 3_500_000, receivedDate: '2026-08-15', contributionType: 'BANK_TRANSFER', note: 'Nam chuyển trước phần vé máy bay' },
   ];
 
-  const recurringTransactions: RecurringTransaction[] = [
-    {
-      id: 'rec_1',
-      title: 'Lương Thắng',
-      type: 'INCOME',
-      amount: 43_000_000,
-      frequency: 'MONTHLY',
-      dayOfMonth: 5,
-      nextDate: `${currentYM}-05`,
-      categoryId: 'cat_luong_thang',
-      accountId: 'tk_thang',
-      memberId: 'thang',
-      isActive: true,
-      lastConfirmedDate: `${currentYM}-05`,
-    },
-    {
-      id: 'rec_2',
-      title: 'Lương Vân',
-      type: 'INCOME',
-      amount: 16_500_000,
-      frequency: 'MONTHLY',
-      dayOfMonth: 10,
-      nextDate: `${currentYM}-10`,
-      categoryId: 'cat_luong_van',
-      accountId: 'tk_van',
-      memberId: 'van',
-      isActive: true,
-      lastConfirmedDate: `${currentYM}-10`,
-    },
-    {
-      id: 'rec_3',
-      title: 'Tiền mạng Internet FPT',
-      type: 'EXPENSE',
-      amount: 285_000,
-      frequency: 'MONTHLY',
-      dayOfMonth: 15,
-      nextDate: `${currentYM}-15`,
-      categoryId: 'cat_tien_co_dinh',
-      accountId: 'tk_thang',
-      memberId: 'thang',
-      isActive: true,
-      lastConfirmedDate: `${currentYM}-15`,
-    },
-    {
-      id: 'rec_4',
-      title: 'Tiền điện nước sinh hoạt',
-      type: 'EXPENSE',
-      amount: 1_850_000,
-      frequency: 'MONTHLY',
-      dayOfMonth: 18,
-      nextDate: `${currentYM}-18`,
-      categoryId: 'cat_tien_co_dinh',
-      accountId: 'tk_van',
-      memberId: 'van',
-      isActive: true,
-      lastConfirmedDate: `${currentYM}-18`,
-    },
-  ];
-
   const auditLogs: AuditLog[] = [
     {
       id: 'aud_1',
@@ -598,7 +537,6 @@ export function getInitialSeedState(): AppState {
     events,
     eventItems,
     eventContributions,
-    recurringTransactions,
     auditLogs,
     lastBackupDate: new Date().toISOString(),
   };
@@ -613,6 +551,7 @@ export function loadAppState(): AppState {
       return initial;
     }
     const parsed = JSON.parse(raw);
+    delete parsed.recurringTransactions;
     return { ...getInitialSeedState(), ...parsed };
   } catch (err) {
     console.error('Failed to load app state from localStorage:', err);
@@ -645,6 +584,7 @@ export function importAppStateFromJSON(jsonText: string): AppState {
   if (!parsed.transactions || !parsed.accounts) {
     throw new Error('Dữ liệu sao lưu không đúng định dạng hợp lệ.');
   }
+  delete parsed.recurringTransactions;
   // Caller persists via Supabase sync; do not write localStorage as source of truth.
   return { ...getInitialSeedState(), ...parsed };
 }

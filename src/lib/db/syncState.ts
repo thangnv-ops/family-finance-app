@@ -18,7 +18,6 @@ import {
   installmentPlanToRow,
   loanToRow,
   plannedExpenseToRow,
-  recurringTransactionToRow,
   savingsDepositToRow,
   suggestionRuleToRow,
   transactionToRow,
@@ -60,7 +59,6 @@ const TO_ROW: Record<SyncableCollectionKey, RowMapper> = {
   events: eventToRow,
   eventItems: eventItemToRow,
   eventContributions: eventContributionToRow,
-  recurringTransactions: recurringTransactionToRow,
   auditLogs: auditLogToRow,
 };
 

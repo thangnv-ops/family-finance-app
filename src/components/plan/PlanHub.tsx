@@ -9,7 +9,6 @@ import {
   EventBudget,
   EventBudgetItem,
   EventContribution,
-  RecurringTransaction,
   Member,
   FinancialAccount,
 } from '../../types/finance';
@@ -32,8 +31,6 @@ import {
   TrendingDown,
   Plane,
   Gift,
-  Clock,
-  Check,
   ChevronRight,
   ArrowRightLeft,
   Users,
@@ -60,7 +57,6 @@ interface PlanHubProps {
   events: EventBudget[];
   eventItems: EventBudgetItem[];
   eventContributions: EventContribution[];
-  recurringTransactions: RecurringTransaction[];
   members: Member[];
   accounts: FinancialAccount[];
   onUpdateBudget: (budget: Budget) => void;
@@ -75,7 +71,6 @@ interface PlanHubProps {
   onAddGoal: (goal: Omit<Goal, 'id'>) => void;
   onUpdateGoal: (goal: Goal) => void;
   onAddEvent: (ev: Omit<EventBudget, 'id'>) => void;
-  onConfirmRecurring: (rec: RecurringTransaction) => void;
   onApplyPlanState: (
     partial: Pick<AppState, 'categories' | 'budgets' | 'incomePlans'>
   ) => void;
@@ -92,7 +87,6 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   events,
   eventItems,
   eventContributions,
-  recurringTransactions,
   members,
   accounts,
   onUpdateBudget,
@@ -107,11 +101,10 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   onAddGoal,
   onUpdateGoal,
   onAddEvent,
-  onConfirmRecurring,
   onApplyPlanState,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<
-    'budget' | 'goals_planned' | 'events' | 'recurring'
+    'budget' | 'goals_planned' | 'events'
   >('budget');
   const [selectedPlanMonth, setSelectedPlanMonth] = useState(getCurrentMonthStr());
   const autoCopiedMonths = useRef(new Set<string>());
@@ -477,17 +470,6 @@ export const PlanHub: React.FC<PlanHubProps> = ({
           <span>Sự kiện ({events.length})</span>
         </button>
 
-        <button
-          onClick={() => setActiveSubTab('recurring')}
-          className={`px-3.5 py-2 rounded-xl font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
-            activeSubTab === 'recurring'
-              ? 'bg-amber-600 text-white shadow-sm'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-          }`}
-        >
-          <Clock className="w-3.5 h-3.5" />
-          <span>Giao dịch định kỳ</span>
-        </button>
       </div>
 
       {/* 1. Sub-Tab: BUDGET & INCOME */}
@@ -1100,69 +1082,6 @@ export const PlanHub: React.FC<PlanHubProps> = ({
               </div>
             );
           })}
-        </div>
-      )}
-
-      {/* 5. Sub-Tab: RECURRING TRANSACTIONS */}
-      {activeSubTab === 'recurring' && (
-        <div className="space-y-4">
-          <div className="px-1">
-            <h3 className="text-base font-bold text-slate-900">Giao dịch định kỳ hàng tháng</h3>
-            <p className="text-xs text-slate-500">
-              Nhắc nhở lương, tiền nhà, tiền mạng, hóa đơn cố định. Xác nhận 1-click khi có phát sinh thực tế.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            {recurringTransactions.map((rec) => {
-              const isIncome = rec.type === 'INCOME';
-              const mem = memberMap.get(rec.memberId);
-
-              return (
-                <div
-                  key={rec.id}
-                  className="bg-white border border-slate-200 p-4 rounded-2xl flex items-center justify-between gap-3 text-xs shadow-sm hover:border-slate-300 transition-all"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1.5 font-bold text-slate-900 text-sm">
-                      <span>{rec.title}</span>
-                      <span
-                        className={`text-[10px] px-2 py-0.5 rounded-full border ${
-                          isIncome
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : 'bg-rose-50 text-rose-700 border-rose-200'
-                        }`}
-                      >
-                        {isIncome ? 'Thu nhập' : 'Chi phí'}
-                      </span>
-                    </div>
-                    <span className="text-slate-500 text-[11px] block">
-                      Định kỳ ngày {rec.dayOfMonth} hàng tháng &middot; Người thực hiện:{' '}
-                      <strong className="text-slate-700">{mem?.name || rec.memberId}</strong>
-                    </span>
-                  </div>
-
-                  <div className="text-right flex flex-col items-end gap-1.5">
-                    <span
-                      className={`text-sm font-extrabold ${
-                        isIncome ? 'text-emerald-600' : 'text-rose-600'
-                      }`}
-                    >
-                      {isIncome ? '+' : '-'}
-                      {formatVND(rec.amount)}
-                    </span>
-                    <button
-                      onClick={() => onConfirmRecurring(rec)}
-                      className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-[11px] transition-all flex items-center gap-1 shadow-xs cursor-pointer"
-                    >
-                      <Check className="w-3 h-3" />
-                      <span>Xác nhận ghi sổ</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </div>
       )}
 

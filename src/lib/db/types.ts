@@ -16,7 +16,6 @@ export const SYNCABLE_COLLECTIONS = [
   'events',
   'eventItems',
   'eventContributions',
-  'recurringTransactions',
   'auditLogs',
 ] as const;
 
@@ -44,6 +43,5 @@ export const COLLECTION_TABLES: Record<ArrayCollectionKey, string> = {
   events: 'events',
   eventItems: 'event_items',
   eventContributions: 'event_contributions',
-  recurringTransactions: 'recurring_transactions',
   auditLogs: 'audit_logs',
 };
