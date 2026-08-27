@@ -48,3 +48,16 @@ describe('budget actual amount', () => {
     ).toBe(1_500_000);
   });
 });
+
+describe('budget planned amount', () => {
+  it('uses the statement payment due instead of the editable credit budget', () => {
+    const budgetPlannedAmount = (ledger as any).budgetPlannedAmount;
+    expect(budgetPlannedAmount).toBeTypeOf('function');
+    expect(budgetPlannedAmount('cat_tra_tin_dung', 14_000_000, 800_000)).toBe(800_000);
+  });
+
+  it('keeps the configured amount for normal expense budgets', () => {
+    const budgetPlannedAmount = (ledger as any).budgetPlannedAmount;
+    expect(budgetPlannedAmount('cat_an_ngoai', 5_000_000, 800_000)).toBe(5_000_000);
+  });
+});

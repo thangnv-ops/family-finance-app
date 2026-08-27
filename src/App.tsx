@@ -19,6 +19,7 @@ import {
   calculateDailyAdvisor,
 } from './lib/ledger';
 import { getCurrentMonthStr, getTodayDateStr } from './lib/formatters';
+import { getCreditPaymentDue } from './lib/creditCard';
 import {
   Transaction,
   FinancialAccount,
@@ -181,6 +182,23 @@ function AuthenticatedApp({
     return active.filter((t) => t.memberId === appState.currentMemberId);
   }, [appState?.transactions, appState?.currentMemberId]);
 
+  const creditPaymentDue = useMemo(() => {
+    if (!appState) return null;
+    return getCreditPaymentDue({
+      statements: appState.creditCardStatements,
+      transactions: appState.transactions,
+      openingBalance:
+        appState.accounts.find((account) => account.id === 'tin_dung')?.openingBalance ?? 0,
+      statementDay: appState.creditCardConfig.statementDay,
+      dueDay: appState.creditCardConfig.dueDay,
+    });
+  }, [
+    appState?.accounts,
+    appState?.creditCardConfig,
+    appState?.creditCardStatements,
+    appState?.transactions,
+  ]);
+
   if (!appState) {
     return <AppLoadingScreen error={loadError} onRetry={reload} />;
   }
@@ -214,6 +232,36 @@ function AuthenticatedApp({
         ...prev.auditLogs,
       ],
     }));
+  };
+
+  const handlePayCreditStatement = (statementId: string | undefined, amount: number) => {
+    if (amount <= 0) return;
+
+    handleSaveTransaction({
+      transactionDate: getTodayDateStr(),
+      transactionType: 'CREDIT_PAYMENT',
+      amount,
+      currency: 'VND',
+      description: `Thanh toán sao kê thẻ ${appState.creditCardConfig.cardName}`,
+      sourceAccountId: 'tk_thang',
+      destinationAccountId: 'tin_dung',
+      memberId: 'thang',
+    });
+
+    if (statementId) {
+      setAppState((prev) => ({
+        ...prev,
+        creditCardStatements: prev.creditCardStatements.map((statement) =>
+          statement.id === statementId
+            ? {
+                ...statement,
+                paidAmount: statement.paidAmount + amount,
+                status: 'PAID',
+              }
+            : statement
+        ),
+      }));
+    }
   };
 
   // Handler: Update transaction
@@ -534,13 +582,14 @@ function AuthenticatedApp({
             recentTransactions={visibleTransactions}
             categories={appState.categories}
             creditCardConfig={appState.creditCardConfig}
-            creditCardStatements={appState.creditCardStatements}
+            creditPaymentDue={creditPaymentDue}
             savingsDeposits={appState.savingsDeposits}
             loans={appState.loans}
             plannedExpenses={appState.plannedExpenses}
             onOpenQuickAdd={() => setIsQuickAddOpen(true)}
             onSelectTransaction={(tx) => setSelectedTx(tx)}
             onNavigateToTab={(tab) => setActiveTab(tab)}
+            onPayCreditStatement={handlePayCreditStatement}
           />
         )}
 
@@ -564,6 +613,7 @@ function AuthenticatedApp({
             incomePlans={appState.incomePlans}
             categories={appState.categories}
             transactions={appState.transactions}
+            creditPaymentDue={creditPaymentDue}
             plannedExpenses={appState.plannedExpenses}
             goals={appState.goals}
             events={appState.events}

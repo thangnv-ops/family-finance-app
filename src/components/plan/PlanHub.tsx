@@ -45,6 +45,7 @@ import {
 import confetti from 'canvas-confetti';
 import {
   budgetActualAmount,
+  budgetPlannedAmount,
   calculateCreditPayments,
   eventContainsDate,
   summarizeEventPlansForMonth,
@@ -57,6 +58,7 @@ interface PlanHubProps {
   incomePlans: IncomePlan[];
   categories: Category[];
   transactions: Transaction[];
+  creditPaymentDue: { amount: number; dueDate: string } | null;
   plannedExpenses: PlannedExpense[];
   goals: Goal[];
   events: EventBudget[];
@@ -87,6 +89,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   incomePlans,
   categories,
   transactions,
+  creditPaymentDue,
   plannedExpenses,
   goals,
   events,
@@ -194,6 +197,9 @@ export const PlanHub: React.FC<PlanHubProps> = ({
     () => calculateCreditPayments(selectedPlanMonth, transactions),
     [selectedPlanMonth, transactions]
   );
+  const creditBucketAmount = creditPaymentDue?.dueDate.startsWith(selectedPlanMonth)
+    ? creditPaymentDue.amount
+    : 0;
 
   // Actual income received per member
   const actualIncomeByMember = useMemo(() => {
@@ -231,8 +237,12 @@ export const PlanHub: React.FC<PlanHubProps> = ({
     () =>
       filteredBudgets
         .filter((b) => b.budgetType === 'EXPENSE_LIMIT')
-        .reduce((sum, b) => sum + (b.plannedAmount || 0), 0) + eventPlans.expense,
-    [filteredBudgets, eventPlans.expense]
+        .reduce(
+          (sum, b) =>
+            sum + budgetPlannedAmount(b.categoryId, b.plannedAmount || 0, creditBucketAmount),
+          0
+        ) + eventPlans.expense,
+    [creditBucketAmount, filteredBudgets, eventPlans.expense]
   );
 
   // Net Planned Balance: Planned Income - Planned Expense Budgets
@@ -845,25 +855,68 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                     actualCategorySpending.get(b.categoryId) || 0,
                     creditPayments
                   );
+                  const plannedA = budgetPlannedAmount(
+                    a.categoryId,
+                    a.plannedAmount,
+                    creditBucketAmount
+                  );
+                  const plannedB = budgetPlannedAmount(
+                    b.categoryId,
+                    b.plannedAmount,
+                    creditBucketAmount
+                  );
                   const remainPctA =
-                    a.plannedAmount > 0
-                      ? ((a.plannedAmount - actualA) / a.plannedAmount) * 100
+                    plannedA > 0
+                      ? ((plannedA - actualA) / plannedA) * 100
                       : 0;
                   const remainPctB =
-                    b.plannedAmount > 0
-                      ? ((b.plannedAmount - actualB) / b.plannedAmount) * 100
+                    plannedB > 0
+                      ? ((plannedB - actualB) / plannedB) * 100
                       : 0;
                   return remainPctB - remainPctA;
                 })
                 .map((b) => {
                   const cat = categoryMap.get(b.categoryId);
+                  const planned = budgetPlannedAmount(
+                    b.categoryId,
+                    b.plannedAmount,
+                    creditBucketAmount
+                  );
+
+                  if (b.categoryId === 'cat_tra_tin_dung') {
+                    return (
+                      <div
+                        key={b.id}
+                        className="bg-slate-50 border border-slate-200/90 p-4 rounded-2xl text-xs"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5 font-bold text-slate-900 min-w-0">
+                            <span
+                              className="w-8 h-8 rounded-xl flex items-center justify-center border border-slate-200 shadow-2xs flex-shrink-0"
+                              style={{
+                                backgroundColor: cat?.color ? `${cat.color}15` : '#3b82f615',
+                                color: cat?.color || '#2563eb',
+                              }}
+                            >
+                              <CategoryIcon iconName={cat?.icon} className="w-4 h-4" />
+                            </span>
+                            <span className="text-sm truncate">{cat?.name || 'Trả tín dụng'}</span>
+                          </div>
+                          <span className="font-extrabold text-base text-slate-900 flex-shrink-0">
+                            {formatVND(planned)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   const actual = budgetActualAmount(
                     b.categoryId,
                     actualCategorySpending.get(b.categoryId) || 0,
                     creditPayments
                   );
-                  const remaining = b.plannedAmount - actual;
-                  const pct = Math.round((actual / (b.plannedAmount || 1)) * 100);
+                  const remaining = planned - actual;
+                  const pct = Math.round((actual / (planned || 1)) * 100);
                   const isOver = remaining < 0;
 
                   return (
@@ -899,7 +952,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                             >
                               {formatVND(actual)}
                             </span>
-                            <span className="text-slate-500 text-xs"> / {formatVND(b.plannedAmount)}</span>
+                            <span className="text-slate-500 text-xs"> / {formatVND(planned)}</span>
                           </div>
 
                           <button

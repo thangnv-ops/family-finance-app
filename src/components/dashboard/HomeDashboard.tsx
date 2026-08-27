@@ -9,7 +9,6 @@ import {
   Loan,
   PlannedExpense,
   CreditCardConfig,
-  CreditCardStatement,
 } from '../../types/finance';
 import {
   AccountBalances,
@@ -51,13 +50,14 @@ interface HomeDashboardProps {
   recentTransactions: Transaction[];
   categories: Category[];
   creditCardConfig: CreditCardConfig;
-  creditCardStatements: CreditCardStatement[];
+  creditPaymentDue: { statementId?: string; amount: number; dueDate: string; daysUntilDue: number } | null;
   savingsDeposits: SavingsDeposit[];
   loans: Loan[];
   plannedExpenses: PlannedExpense[];
   onOpenQuickAdd: () => void;
   onSelectTransaction: (tx: Transaction) => void;
   onNavigateToTab: (tab: 'transactions' | 'plan' | 'insights' | 'more') => void;
+  onPayCreditStatement: (statementId: string | undefined, amount: number) => void;
 }
 
 export const HomeDashboard: React.FC<HomeDashboardProps> = ({
@@ -70,13 +70,14 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   recentTransactions,
   categories,
   creditCardConfig,
-  creditCardStatements,
+  creditPaymentDue,
   savingsDeposits,
   loans,
   plannedExpenses,
   onOpenQuickAdd,
   onSelectTransaction,
   onNavigateToTab,
+  onPayCreditStatement,
 }) => {
   const categoryMap = useMemo(() => new Map<string, Category>(categories.map((c) => [c.id, c])), [categories]);
   const currentYM = getCurrentMonthStr();
@@ -85,6 +86,13 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const maturingSavings = savingsDeposits.filter((s) => s.status === 'ACTIVE');
   const activeLoans = loans.filter((l) => l.status === 'ACTIVE' || l.status === 'PARTIALLY_PAID');
   const pendingPlanned = plannedExpenses.filter((p) => p.status === 'READY' || p.status === 'PLANNED');
+  const creditDueLabel = !creditPaymentDue
+    ? 'Không có sao kê cần trả'
+    : creditPaymentDue.daysUntilDue > 0
+    ? `Còn ${creditPaymentDue.daysUntilDue} ngày đến hạn`
+    : creditPaymentDue.daysUntilDue === 0
+    ? 'Đến hạn hôm nay'
+    : `Quá hạn ${Math.abs(creditPaymentDue.daysUntilDue)} ngày`;
 
   const memberFilterName =
     currentMemberId === 'all'
@@ -398,7 +406,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0 border border-amber-200">
               <CreditCard className="w-5 h-5" />
             </div>
-            <div className="flex-1 text-xs">
+            <div className="flex-1 text-xs min-w-0">
               <div className="flex justify-between items-center mb-0.5">
                 <span className="font-bold text-slate-900">Thẻ {creditCardConfig.cardName}</span>
                 <span className="text-amber-700 font-semibold">Chốt: {creditCardConfig.statementDay} hàng tháng</span>
@@ -406,6 +414,29 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               <p className="text-slate-500">
                 Dư nợ: <strong className="text-slate-900">{formatVND(balances.tin_dung)}</strong> &middot; Hạn trả ngày {creditCardConfig.dueDay}
               </p>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                <span className={`font-semibold ${creditPaymentDue?.daysUntilDue !== undefined && creditPaymentDue.daysUntilDue < 0 ? 'text-rose-600' : 'text-amber-700'}`}>
+                  {creditDueLabel}
+                  {creditPaymentDue ? ` · Cần trả ${formatVND(creditPaymentDue.amount)}` : ''}
+                </span>
+                <button
+                  type="button"
+                  disabled={!creditPaymentDue}
+                  onClick={() => {
+                    if (!creditPaymentDue) return;
+                    if (
+                      window.confirm(
+                        `Trả ${formatVND(creditPaymentDue.amount)} từ TK Thắng cho sao kê thẻ?`
+                      )
+                    ) {
+                      onPayCreditStatement(creditPaymentDue.statementId, creditPaymentDue.amount);
+                    }
+                  }}
+                  className="rounded-lg bg-amber-600 px-3 py-1.5 font-bold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                >
+                  {creditPaymentDue ? 'Trả ngay' : 'Đã thanh toán'}
+                </button>
+              </div>
             </div>
           </div>
 

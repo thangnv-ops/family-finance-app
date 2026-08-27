@@ -58,6 +58,14 @@ export function budgetActualAmount(
     : monthlyCategorySpending;
 }
 
+export function budgetPlannedAmount(
+  categoryId: string,
+  configuredAmount: number,
+  creditPaymentDue: number
+): number {
+  return categoryId === 'cat_tra_tin_dung' ? creditPaymentDue : configuredAmount;
+}
+
 export function calculateCreditPayments(month: string, transactions: Transaction[]): number {
   return transactions
     .filter(
