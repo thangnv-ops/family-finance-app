@@ -270,7 +270,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   const [showAddBudgetModal, setShowAddBudgetModal] = useState(false);
   const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
   const [budgetCategoryId, setBudgetCategoryId] = useState('');
-  const [budgetPlannedAmount, setBudgetPlannedAmount] = useState('');
+  const [budgetPlannedAmountInput, setBudgetPlannedAmount] = useState('');
   const [budgetDailySpend, setBudgetDailySpend] = useState(false);
 
   // Modals for Income Plan (Lương & Thu nhập dự kiến)
@@ -412,7 +412,7 @@ export const PlanHub: React.FC<PlanHubProps> = ({
   const handleSaveBudget = (e: React.FormEvent) => {
     e.preventDefault();
     if (!budgetCategoryId) return;
-    const amount = parseInt(budgetPlannedAmount.replace(/[^0-9]/g, ''), 10) || 0;
+    const amount = parseInt(budgetPlannedAmountInput.replace(/[^0-9]/g, ''), 10) || 0;
     if (amount <= 0) {
       alert('Vui lòng nhập hạn mức lớn hơn 0');
       return;
@@ -1536,8 +1536,8 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                 type="text"
                 placeholder="VD: 5000000"
                 value={
-                  budgetPlannedAmount
-                    ? parseInt(budgetPlannedAmount.replace(/[^0-9]/g, ''), 10).toLocaleString('vi-VN')
+                  budgetPlannedAmountInput
+                    ? parseInt(budgetPlannedAmountInput.replace(/[^0-9]/g, ''), 10).toLocaleString('vi-VN')
                     : ''
                 }
                 onChange={(e) => setBudgetPlannedAmount(e.target.value.replace(/[^0-9]/g, ''))}
@@ -1628,8 +1628,8 @@ export const PlanHub: React.FC<PlanHubProps> = ({
                 type="text"
                 placeholder="VD: 5000000"
                 value={
-                  budgetPlannedAmount
-                    ? parseInt(budgetPlannedAmount.replace(/[^0-9]/g, ''), 10).toLocaleString('vi-VN')
+                  budgetPlannedAmountInput
+                    ? parseInt(budgetPlannedAmountInput.replace(/[^0-9]/g, ''), 10).toLocaleString('vi-VN')
                     : ''
                 }
                 onChange={(e) => setBudgetPlannedAmount(e.target.value.replace(/[^0-9]/g, ''))}
