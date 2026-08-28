@@ -17,6 +17,7 @@ import {
   calculateBalances,
   calculateMonthlyStats,
   calculateDailyAdvisor,
+  transactionCategoryId,
 } from './lib/ledger';
 import { getCurrentMonthStr, getTodayDateStr } from './lib/formatters';
 import { getCreditPaymentDue } from './lib/creditCard';
@@ -211,6 +212,7 @@ function AuthenticatedApp({
     const nowIso = new Date().toISOString();
     const created: Transaction = {
       ...newTx,
+      categoryId: transactionCategoryId(newTx.transactionType, newTx.categoryId),
       id,
       createdAt: nowIso,
       updatedAt: nowIso,
@@ -266,17 +268,21 @@ function AuthenticatedApp({
 
   // Handler: Update transaction
   const handleUpdateTransaction = (updated: Transaction) => {
+    const normalized = {
+      ...updated,
+      categoryId: transactionCategoryId(updated.transactionType, updated.categoryId),
+    };
     setAppState((prev) => ({
       ...prev,
-      transactions: prev.transactions.map((t) => (t.id === updated.id ? updated : t)),
+      transactions: prev.transactions.map((t) => (t.id === normalized.id ? normalized : t)),
       auditLogs: [
         {
           id: `aud_${Date.now()}`,
           entityType: 'TRANSACTION',
-          entityId: updated.id,
+          entityId: normalized.id,
           action: 'UPDATE',
-          description: `Cập nhật giao dịch: ${updated.description}`,
-          userId: updated.memberId,
+          description: `Cập nhật giao dịch: ${normalized.description}`,
+          userId: normalized.memberId,
           timestamp: new Date().toISOString(),
         },
         ...prev.auditLogs,

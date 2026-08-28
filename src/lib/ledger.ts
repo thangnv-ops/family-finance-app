@@ -30,6 +30,13 @@ export interface AccountBalances {
   netWorth: number;
 }
 
+export function transactionCategoryId(
+  transactionType: Transaction['transactionType'],
+  categoryId?: string
+): string | undefined {
+  return transactionType === 'TRANSFER' ? undefined : categoryId || undefined;
+}
+
 export interface MonthlyStats {
   month: string;
   income: number;

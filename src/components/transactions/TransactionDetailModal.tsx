@@ -10,6 +10,7 @@ import {
 } from '../../types/finance';
 import { formatVND, formatDateVN } from '../../lib/formatters';
 import { CategoryIcon } from '../common/CategoryIcon';
+import { transactionCategoryId } from '../../lib/ledger';
 import {
   X,
   Trash2,
@@ -60,8 +61,12 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
 
   if (!transaction) return null;
 
-  const cat = transaction.categoryId
-    ? categories.find((c) => c.id === transaction.categoryId)
+  const effectiveCategoryId = transactionCategoryId(
+    transaction.transactionType,
+    transaction.categoryId
+  );
+  const cat = effectiveCategoryId
+    ? categories.find((c) => c.id === effectiveCategoryId)
     : undefined;
   const member = members.find((m) => m.id === transaction.memberId);
   const srcAccount = accounts.find((a) => a.id === transaction.sourceAccountId);
@@ -95,7 +100,7 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
       ...transaction,
       amount: parsed,
       description: editDesc.trim(),
-      categoryId: editCategory || undefined,
+      categoryId: transactionCategoryId(transaction.transactionType, editCategory),
       note: editNote.trim() || undefined,
       transactionDate: editDate,
       updatedAt: new Date().toISOString(),
@@ -311,21 +316,23 @@ export const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
               />
             </div>
 
-            <div>
-              <label className="block text-slate-400 mb-1">Danh mục</label>
-              <select
-                value={editCategory}
-                onChange={(e) => setEditCategory(e.target.value)}
-                className="w-full bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-400/50"
-              >
-                <option value="">-- Không chọn --</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {!isTransfer && (
+              <div>
+                <label className="block text-slate-400 mb-1">Danh mục</label>
+                <select
+                  value={editCategory}
+                  onChange={(e) => setEditCategory(e.target.value)}
+                  className="w-full bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-indigo-400/50"
+                >
+                  <option value="">-- Không chọn --</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-slate-400 mb-1">Ngày giao dịch</label>

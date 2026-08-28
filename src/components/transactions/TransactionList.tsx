@@ -9,6 +9,7 @@ import {
 } from '../../types/finance';
 import { formatVND, formatDateVN, formatMonthVN, getCurrentMonthStr } from '../../lib/formatters';
 import { CategoryIcon } from '../common/CategoryIcon';
+import { transactionCategoryId } from '../../lib/ledger';
 import {
   Search,
   Filter,
@@ -86,7 +87,8 @@ export const TransactionList: React.FC<TransactionListProps> = ({
       }
 
       // Category filter
-      if (selectedCategoryId !== 'ALL' && tx.categoryId !== selectedCategoryId) {
+      const effectiveCategoryId = transactionCategoryId(tx.transactionType, tx.categoryId);
+      if (selectedCategoryId !== 'ALL' && effectiveCategoryId !== selectedCategoryId) {
         return false;
       }
 
@@ -100,7 +102,9 @@ export const TransactionList: React.FC<TransactionListProps> = ({
       // Search term
       if (searchTerm.trim()) {
         const query = searchTerm.toLowerCase();
-        const catName = tx.categoryId ? categoryMap.get(tx.categoryId)?.name.toLowerCase() || '' : '';
+        const catName = effectiveCategoryId
+          ? categoryMap.get(effectiveCategoryId)?.name.toLowerCase() || ''
+          : '';
         const matchDesc = tx.description.toLowerCase().includes(query);
         const matchNote = tx.note ? tx.note.toLowerCase().includes(query) : false;
         const matchCat = catName.includes(query);
@@ -317,7 +321,13 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                 {/* Items in this date */}
                 <div className="divide-y divide-slate-100">
                   {txList.map((tx) => {
-                    const cat = tx.categoryId ? categoryMap.get(tx.categoryId) : undefined;
+                    const effectiveCategoryId = transactionCategoryId(
+                      tx.transactionType,
+                      tx.categoryId
+                    );
+                    const cat = effectiveCategoryId
+                      ? categoryMap.get(effectiveCategoryId)
+                      : undefined;
                     const isIncome = tx.transactionType === 'INCOME';
                     const isTransfer = tx.transactionType === 'TRANSFER';
                     const isCredit = tx.transactionType === 'CREDIT_PURCHASE';
@@ -344,7 +354,9 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                               {tx.description}
                             </div>
                             <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
-                              <span className="capitalize">{cat?.name || 'Khác'}</span>
+                              <span className="capitalize">
+                                {isTransfer ? 'Chuyển khoản nội bộ' : cat?.name || 'Khác'}
+                              </span>
                               <span>&middot;</span>
                               <span
                                 className={`font-semibold px-2 py-0.5 rounded-full text-[10px] border ${
