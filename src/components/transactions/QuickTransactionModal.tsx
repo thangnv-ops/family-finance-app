@@ -73,6 +73,10 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
   const effectiveSourceAccountId = accountOptions.some((a) => a.id === sourceAccountId)
     ? sourceAccountId
     : accountOptions[0]?.id ?? 'tk_thang';
+  const effectiveAccountId =
+    transactionType === 'INCOME'
+      ? destinationAccountId || (memberId === 'van' ? 'tk_van' : 'tk_thang')
+      : effectiveSourceAccountId;
 
   // Initialize or reset when modal opens
   useEffect(() => {
@@ -361,13 +365,18 @@ export const QuickTransactionModal: React.FC<QuickTransactionModalProps> = ({
             {/* Account */}
             <div>
               <label className="block text-xs text-slate-400 mb-1 font-medium">
-                {transactionType === 'TRANSFER' ? 'Từ tài khoản' : 'Tài khoản nguồn'}
+                {transactionType === 'INCOME'
+                  ? 'Tài khoản nhận'
+                  : transactionType === 'TRANSFER'
+                  ? 'Từ tài khoản'
+                  : 'Tài khoản nguồn'}
               </label>
               <select
-                value={effectiveSourceAccountId}
+                value={effectiveAccountId}
                 onChange={(e) => {
                   const val = e.target.value;
-                  setSourceAccountId(val);
+                  if (transactionType === 'INCOME') setDestinationAccountId(val);
+                  else setSourceAccountId(val);
                   if (val === 'tk_van') setMemberId('van');
                   else if (val === 'tk_thang') setMemberId('thang');
                 }}
